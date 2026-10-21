@@ -1426,7 +1426,7 @@ function defaults() {
   return {
     v: 1,
     fields: [{ type: "str", name: "Date", value: "" }, { type: "int", name: "Replicate", value: "1" }, { type: "str", name: "Plate name", value: "" }],
-    types: [{ name: "Prett", color: "#f5c518", key: "e" }, { name: "Unknown", color: "#ef4444", key: "u" }],
+    types: [{ name: "Prett", color: "#f5c518", key: "e" }],
     volume: 5, dilMode: "plate", dil: { plate: 25, row: [], col: [] }, rows: 8, cols: 12,
     image: null, grid: null, cal: null, det: { sens: 0, size: 1 },
     wells: {}, cur: 0, active: 0, tapMode: "remove", view: "setup", fileName: "",
@@ -2009,6 +2009,7 @@ function renderCount() {
       <button class="tsel" data-type="${k}" aria-pressed="${k === S.active}"><span class="sw" style="background:${hexColor(t.color)}"></span><span class="nm">${esc(t.name)}${t.key ? `<small>${esc(t.key)}</small>` : ""}</span><span class="ct">${w.ign ? "NA" : w.tm[k] ? "Inf" : counts[k]}</span></button>
       <button class="tm" data-tm="${k}" aria-pressed="${!!w.tm[k]}" title="Too many to count: exported as Inf">Too<br>many</button></div>`).join("");
   for (const b of $$("#tapmode button")) b.setAttribute("aria-pressed", b.dataset.m === S.tapMode);
+  $("#tapmode").parentElement.hidden = S.types.length < 2; if (S.types.length < 2) S.tapMode = "remove";
   $("#f-empty").setAttribute("aria-pressed", !!w.empty); $("#f-ign").setAttribute("aria-pressed", !!w.ign);
   $("#c-undo").disabled = !undoStack.length;
   $("#sens").value = S.det.sens; $("#sens-v").textContent = (S.det.sens > 0 ? "+" : "") + S.det.sens.toFixed(2);

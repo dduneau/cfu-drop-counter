@@ -1916,10 +1916,18 @@ function buildCSV() {
   for (let i = 0; i < nWells(); i++) lines.push([...S.fields.map((f) => clean(f.value)), wellName(i), javaDouble(S.volume), javaDouble(dilutionFor(i)), ...cellValues(i)].join(";"));
   return lines.join("\r\n") + "\r\n";
 }
-function defaultName() {
-  const parts = S.fields.map((f) => String(f.value || "").trim()).filter(Boolean).join("_").replace(/[\\/:*?"<>|\s]+/g, "_");
-  return "COUNTS_" + (parts || "plate") + ".csv";
+// COUNTS_<scan name>.csv; when several plates come from the same scan, the plate name (and replicate) keeps them apart
+function fileBase() {
+  const clean = (x) => String(x || "").trim().replace(/[\\/:*?"<>|\s]+/g, "_");
+  const scan = S.image ? S.image.name.replace(/\.[^.]+$/, "") : "";
+  if (!scan) return clean(S.fields.map((f) => String(f.value || "").trim()).filter(Boolean).join("_")) || "plate";
+  const same = PLATES.filter((p) => p.imgKey && p.imgKey === S.imgKey);
+  if (same.length <= 1) return clean(scan);
+  const name = plateNameOf(S), rep = repOf(S);
+  const nameClash = same.filter((p) => p.name === name).length > 1;
+  return clean(scan + "_" + name + (nameClash && rep ? "_rep" + rep : ""));
 }
+function defaultName() { return "COUNTS_" + fileBase() + ".csv"; }
 function renderExport() {
   const n = nWells(); let seen = 0, total = 0, inf = 0, na = 0;
   for (let i = 0; i < n; i++) { const w = W(i); if (w.seen) seen++; if (w.ign) na++; else if (w.tm.some(Boolean)) inf++; if (!w.ign && !w.empty) total += w.m.length; }

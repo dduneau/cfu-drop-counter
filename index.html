@@ -1091,8 +1091,9 @@ const LoadEst = (() => {
     // the same dilution recorded twice for a fly
     merged.sort((a, b) => (a.plate < b.plate ? -1 : a.plate > b.plate ? 1 : a.well < b.well ? -1 : a.well > b.well ? 1 : 0));
     const cp = new Map();
-    for (const m of merged) { const k = m.id + "\u0001" + m.dilFactor + "\u0001" + m.rep; m.copy = (cp.get(k) || 0) + 1; cp.set(k, m.copy); }
-    for (const m of merged) m.nCopy = cp.get(m.id + "\u0001" + m.dilFactor + "\u0001" + m.rep);
+    // spots without a dilution are left out anyway, so they are not compared
+    for (const m of merged) { if (isNaN(m.dilFrac)) { m.copy = 1; continue; } const k = m.id + "\u0001" + m.dilFactor + "\u0001" + m.rep; m.copy = (cp.get(k) || 0) + 1; cp.set(k, m.copy); }
+    for (const m of merged) m.nCopy = isNaN(m.dilFrac) ? 1 : cp.get(m.id + "\u0001" + m.dilFactor + "\u0001" + m.rep);
     const twice = merged.filter((m) => m.nCopy > 1 && m.copy <= 2 && Number.isFinite(m.cfu));
     if (twice.length) {
       const g = new Map();
@@ -1105,7 +1106,7 @@ const LoadEst = (() => {
     const frac = [...new Set(spots.map((s) => s.dilFactor).filter((f) => f > 0 && f < 1))].sort();
     if (frac.length) res.warnings.push({ text: `Dilution factor(s) ${frac.join(", ")} are between 0 and 1. Factors are written as 1 (undiluted), 5 for 1/5, 25 for 1/25, so these are read as undiluted.` });
     const noDil = spots.filter((s) => isNaN(s.dilFrac)).length;
-    if (noDil) res.warnings.push({ text: `${noDil} spot(s) have no dilution and are left out.` });
+    if (noDil) res.warnings.push({ kind: "info", text: `${noDil} spot(s) have no dilution (a row or column marked as not spotted) and are left out.` });
     // counts per dilution
     let use = merged;
     if (settings.dupAction === "first") use = merged.filter((m) => m.copy === 1);
@@ -1368,7 +1369,9 @@ function pitch() {
 function dilutionFor(i) {
   const r = Math.floor(i / S.cols), k = i % S.cols;
   const v = S.dilMode === "row" ? S.dil.row[r] : S.dilMode === "col" ? S.dil.col[k] : S.dil.plate;
-  const n = parseFloat(v); return isFinite(n) ? n : S.dil.plate;
+  // per row/column: never typed = the plate value shown in the box; emptied = not spotted (no dilution)
+  if (S.dilMode !== "plate" && v === undefined) return parseFloat(S.dil.plate);
+  const n = parseFloat(v); return isFinite(n) ? n : S.dilMode === "plate" ? NaN : NaN;
 }
 
 // ---------- views ----------
@@ -1423,7 +1426,7 @@ function renderSetup() {
   if (S.dilMode === "plate") di.innerHTML = `<div class="row"><label class="lbl" for="dil-p" style="min-width:9em">Dilution factor</label><input type="number" step="any" id="dil-p" value="${esc(S.dil.plate)}"></div>`;
   else {
     const n = S.dilMode === "row" ? S.rows : S.cols, arr = S.dil[S.dilMode];
-    di.innerHTML = `<div class="dil-grid">${Array.from({ length: n }, (_, i) => `<label>${S.dilMode === "row" ? "Row " + LETTERS[i] : "Col " + (i + 1)}<input type="number" step="any" data-dil="${i}" value="${esc(arr[i] ?? S.dil.plate)}"></label>`).join("")}</div>`;
+    di.innerHTML = `<div class="dil-grid">${Array.from({ length: n }, (_, i) => `<label>${S.dilMode === "row" ? "Row " + LETTERS[i] : "Col " + (i + 1)}<input type="number" step="any" data-dil="${i}" placeholder="none" value="${esc(arr[i] ?? S.dil.plate)}"></label>`).join("")}</div><p class="hint">Factors: 1 = undiluted, 10 = 1/10. Leave a box empty for a ${S.dilMode === "row" ? "row" : "column"} that was not spotted: its wells are left out of the load estimate.</p>`;
   }
   updateSteps();
 }
@@ -1891,7 +1894,7 @@ document.addEventListener("keydown", (e) => {
 
 // ---------- export ----------
 function javaDouble(x) {
-  x = +x; if (!isFinite(x)) return String(x);
+  x = +x; if (x !== x) return "NA"; if (!isFinite(x)) return String(x);
   if (x === 0) return "0.0";
   const a = Math.abs(x);
   if (a >= 1e-3 && a < 1e7) return Number.isInteger(x) ? x.toFixed(1) : String(x);
@@ -2042,7 +2045,8 @@ function wellNameOf(st, i) { return LETTERS[Math.floor(i / st.cols)] + ((i % st.
 function dilutionOf(st, i) {
   const r = Math.floor(i / st.cols), k = i % st.cols;
   const v = st.dilMode === "row" ? st.dil.row[r] : st.dilMode === "col" ? st.dil.col[k] : st.dil.plate;
-  const n = parseFloat(v); return isFinite(n) ? n : parseFloat(st.dil.plate);
+  if (st.dilMode !== "plate" && v === undefined) return parseFloat(st.dil.plate);
+  const n = parseFloat(v); return isFinite(n) ? n : NaN;
 }
 function spotsOf(st, type) {
   if (!st || !st.grid) return [];

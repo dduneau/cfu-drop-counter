@@ -422,56 +422,82 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
   <!-- HELP -->
   <section class="view pad" id="v-help" hidden>
     <article class="help"><h1>CFU Drop Counter</h1>
-<p><strong>Version 1.0</strong>. The version is shown next to the app's name, and written into the progress files and the Load settings record.</p>
-<p>A web app for counting bacterial colonies (CFU) in drops spotted on a 96-well plate lid filled with agar, and for turning those counts into a bacterial load per fly. It runs in the browser, on an iPad, a phone or a computer. Nothing is uploaded: scans and counts stay on the device that opens the app.</p>
-<p>It replaces the Java program CountDrops for counting. Its COUNTS files have the same format, and its Load tab uses the same estimator as the lab's R app, <code>loadEstimate()</code>.</p>
+<p><strong>Version 1.0</strong>. The version is shown next to the app's name and written into the progress files and the Load settings record.</p>
+<p>CFU Drop Counter counts bacterial colonies (CFU) in drops spotted on a 96-well plate lid filled with agar, and estimates the bacterial load of each fly from those counts. It runs in a web browser on an iPad, a phone or a computer, with nothing to install. Scans and counts are never uploaded. They stay on the device that opens the app.</p>
+<p>The work goes through five steps, shown at the top of the app:</p>
+<ol>
+<li><strong>Setup</strong>: load the scan and describe the plate.</li>
+<li><strong>Grid</strong>: place the drop grid on the scan.</li>
+<li><strong>Count</strong>: detect colonies automatically, then check and correct each drop by tapping.</li>
+<li><strong>Export</strong>: save the counts as a CSV file.</li>
+<li><strong>Load</strong>: estimate the load per fly from one or several plates and a layout file.</li>
+</ol>
 <h2>Getting started</h2>
 <ol>
 <li>Open the app's address in Safari on the iPad.</li>
 <li>Tap <strong>Share → Add to Home Screen</strong>, and from then on open the app from that icon. Safari can clear a website's stored data after 7 days without a visit. Apps opened from the Home Screen are exempt.</li>
 <li>Put the scans where the iPad can reach them: Files, iCloud Drive or AirDrop. Use the original image files. Photos and messaging apps can resize images.</li>
 </ol>
-<p>The app works through five steps, shown at the top: <strong>Setup → Grid → Count → Export → Load</strong>.</p>
+<p><strong>Use example scan</strong> on the Setup screen loads an example plate to try the app.</p>
 <h2>1. Setup</h2>
-<p><strong>Plates on this device</strong> lists every plate you have started, with how many drops you have checked, when it was last edited, and whether a CSV or a backup file has been saved. <strong>Open</strong> switches to a plate exactly where you left it. <strong>×</strong> deletes it, after you confirm. <strong>New plate</strong> starts an empty one.</p>
-<p><strong>Scan.</strong> Choose the plate image (PNG or JPEG; TIFF opens in Safari only). Choosing a scan for a plate you have already worked on starts a new plate, and the old one stays in the list. <strong>Use example scan</strong> loads a reduced example to try the app.</p>
-<p><strong>Plate information.</strong> These fields become the first columns of the COUNTS file, one value for the whole plate. Text, integer, decimal and yes/no fields can be added or removed. Two field names have a meaning:</p>
+<p><strong>Plates on this device</strong> lists every plate you have started. Each entry shows how many drops you have checked, when the plate was last edited, and whether a CSV or a backup file has been saved. <strong>Open</strong> returns to a plate exactly where you left it. <strong>×</strong> deletes it after you confirm. <strong>New plate</strong> starts an empty one.</p>
+<p><strong>Scan.</strong> Choose the plate image (PNG or JPEG; TIFF opens in Safari only). Choosing a scan for a plate you have already worked on starts a new plate, and the old one stays in the list.</p>
+<p><strong>Plate information.</strong> These fields become the first columns of the counts file, with one value for the whole plate. Fields can be text, whole numbers, decimals or yes/no, and you can add or remove them. Two field names have a special role:</p>
 <ul>
-<li><strong>Plate name</strong> names the plate. The Load tab and the R app use it to match plates with the layout file. Give every plate its own name, with a single number in it (<code>plate01</code>, not <code>25-06-17_plate01</code>), because plates can be matched on the number in the name.</li>
-<li><strong>Replicate</strong> is added to the plate's name in the lists, and goes up by one when you count another plate on the same scan.</li>
+<li><strong>Plate name</strong> identifies the plate. The Load step uses it to match plates with the layout file. Give every plate its own name with a single number in it, such as <code>plate01</code>. Avoid names like <code>25-06-17_plate01</code>, because plates can be matched on the number in the name.</li>
+<li><strong>Replicate</strong> appears next to the plate name in the lists, and goes up by one when you count another plate on the same scan.</li>
 </ul>
-<p><strong>Colony types.</strong> One row per kind of colony to count, each with a colour and an optional keyboard key.</p>
-<p><strong>Plate format.</strong> 8 × 12 for a 96-well lid.</p>
-<p><strong>Volume and dilution</strong> (folded away; not used for counting). The volume per drop and the dilution of each well are written into the COUNTS file, and the Load tab uses them. The dilution can be one value for the whole plate, one per row, or one per column. Dilutions are written as factors: 1 = undiluted, 10 = 1/10, 25 = 1/25. <strong>Leave a box empty for a row or column that was not spotted.</strong> Its wells are exported with <code>NA</code> as dilution and left out of the load estimate. The app remembers these settings for the next plate.</p>
+<p><strong>Colony types.</strong> One row per kind of colony to count, each with a colour and an optional keyboard key. The default is a single type, Prett.</p>
+<p><strong>Plate format.</strong> 8 rows × 12 columns for a 96-well lid.</p>
+<p><strong>Volume and dilution</strong> (folded away, because counting does not use them). The volume per drop and the dilution of each well are written into the counts file, and the Load step uses them.</p>
+<ul>
+<li>The dilution can be one value for the whole plate, one per row, or one per column.</li>
+<li>Write dilutions as factors: 1 = undiluted, 10 = 1/10, 25 = 1/25.</li>
+<li><strong>Leave a box empty for a row or column that was not spotted.</strong> Those wells get <code>NA</code> as their dilution and are left out of the load estimate.</li>
+</ul>
+<p>The app remembers these settings for the next plate.</p>
 <h2>2. Grid</h2>
-<p>Drag the four corner markers onto the centres of the corner drops: <strong>A1, A12, H1 and H12</strong>. A magnifier shows the spot under your finger, and <strong>Zoom to grid</strong> enlarges the plate on a scan holding two plates. Then tap <strong>Snap to wells</strong>: it fits the grid to the well rims when each circle is already within about a fifth of a well of its place, and <strong>Undo</strong> puts the corners back.</p>
-<p>A plate scanned sideways works too: put each marker on the well that carries that name. For a lid photographed with the dilution series running down the image, A1 is top left, A12 bottom left, H1 top right and H12 bottom right.</p>
-<p><strong>Counting area</strong> sets the size of the circle in which colonies are detected; keep it just inside the well rim.</p>
+<ol>
+<li>Drag the four corner markers onto the centres of the corner drops: <strong>A1, A12, H1 and H12</strong>. A magnifier shows the spot under your finger. On a scan holding two plates, <strong>Zoom to grid</strong> enlarges the plate you are placing.</li>
+<li>Tap <strong>Snap to wells</strong>. It fits the grid to the well rims when each circle is already within about a fifth of a well of its place. <strong>Undo</strong> puts the corners back.</li>
+</ol>
+<p>A plate scanned sideways works too: put each marker on the well with that name. For a lid photographed with the dilution series running down the image, A1 is top left, A12 bottom left, H1 top right and H12 bottom right.</p>
+<p><strong>Counting area</strong> sets the size of the circle in which colonies are detected. Keep it just inside the well rim.</p>
 <p><strong>Detect colonies on all drops</strong> runs the automatic detection on every drop and opens the counting screen. <strong>Count by hand</strong> skips detection.</p>
 <h2>3. Count</h2>
 <p>The drop fills the screen, with the detected colonies circled.</p>
 <ul>
 <li><strong>Tap an empty spot</strong> to add a colony of the selected type.</li>
-<li><strong>Tap a mark</strong> to remove it. Switch <strong>Tap a mark to</strong> to <strong>Change type</strong> to give it the selected type instead.</li>
-<li><strong>Too many</strong> next to a type means the drop cannot be counted for that type. It is exported as <code>Inf</code>.</li>
-<li><strong>Empty drop</strong> sets the count to 0. <strong>Ignore drop</strong> leaves the drop out, and it is exported as <code>NA</code>.</li>
+<li><strong>Tap a mark</strong> to remove it. With several colony types, switch <strong>Tap a mark to</strong> to <strong>Change type</strong> to give it the selected type instead.</li>
+<li><strong>Too many</strong> next to a type means the drop cannot be counted for that type. It is saved as <code>Inf</code>.</li>
+<li><strong>Empty drop</strong> sets the count to 0.</li>
+<li><strong>Ignore drop</strong> leaves the drop out; it is saved as <code>NA</code>.</li>
 <li><strong>Undo</strong> reverses the last change, including a whole re-detection.</li>
-<li>Move with <strong>Previous / Next</strong>, by swiping left or right on the drop, or with the plate map, where each well shows its count.</li>
-<li>On the map, shaded wells were detected but not yet looked at, and green-outlined wells were corrected by hand.</li>
-<li><strong>Jump to next unchecked drop</strong> finds the next one you haven't looked at.</li>
+<li>Move between drops with <strong>Previous / Next</strong>, by swiping left or right on the drop, or with the plate map, where each well shows its count. On the map, shaded wells were detected but not yet looked at, and wells outlined in green were corrected by hand. <strong>Jump to next unchecked drop</strong> finds the next drop you have not looked at.</li>
 <li><strong>Detection sensitivity</strong> and <strong>Colony size</strong> adjust the detection. <strong>Detect again on</strong> reruns it on this drop, its row, its column or the whole plate.</li>
 </ul>
-<p>With a keyboard: ← → or space move between drops, ↑ ↓ move by a row, the type keys select a type, and Cmd/Ctrl + Z undoes.</p>
-<p><strong>How well detection works.</strong> On the lab's scans it gets about 85% of countable drops within ±2 colonies of a manual count, with a mean error near one colony. It tends to miss colonies in crowded drops where they merge, and occasionally splits a large colony in two. Look at every drop before exporting. Detection is a starting point, not a count.</p>
+<p>With a keyboard:</p>
+<ul>
+<li>← → or space move between drops, and ↑ ↓ move by a row.</li>
+<li>The type keys select a colony type.</li>
+<li>Cmd/Ctrl + Z undoes.</li>
+</ul>
+<p><strong>How well detection works.</strong> On the lab's scans, about 85% of countable drops came within ±2 colonies of a manual count, with a mean error near one colony. Detection misses colonies in crowded drops where they merge, and occasionally splits a large colony in two. It is a starting point, not a count: look at every drop before exporting.</p>
 <h2>4. Export</h2>
-<p>A summary of the plate and a table of counts per drop. Shaded cells were detected but not looked at.</p>
-<p><strong>Save CSV</strong> writes the COUNTS file, named after the scan: <code>COUNTS_&lt;scan name&gt;.csv</code>. When several plates come from the same scan, the plate name is added (<code>COUNTS_&lt;scan&gt;_&lt;plate&gt;.csv</code>), and the replicate too if the plate names are the same. The name can be edited before saving. On an iPad the file goes to Files → Downloads.</p>
-<p><strong>Save progress file</strong> writes a backup of the plate (see <em>Saving and backups</em> below).</p>
-<p><strong>Count another plate on this scan</strong> starts the next plate on the same image, with the grid kept so you only move it. <strong>New plate with another scan</strong> starts a fresh plate. Both keep the current plate in the list.</p>
-<h3>The COUNTS file</h3>
-<p>Semicolon-separated, one row per well, the same format as CountDrops:</p>
-<pre><code>Date;Replicate;Plate name;WELL;Volume;Dilution;Prett;Unknown;NA
-25/06/2017;1;Traj_Prett_CS_sexdim_plate01;A1;5.0;25.0;2;0;0
+<p>The Export screen shows a summary of the plate and a table of counts per drop. Shaded cells were detected but not looked at.</p>
+<p><strong>Save CSV</strong> writes the counts file, named after the scan: <code>COUNTS_&lt;scan name&gt;.csv</code>.</p>
+<ul>
+<li>When several plates come from the same scan, the plate name is added: <code>COUNTS_&lt;scan&gt;_&lt;plate&gt;.csv</code>.</li>
+<li>If those plates also share a name, the replicate is added as well.</li>
+<li>You can edit the name before saving.</li>
+<li>On an iPad the file goes to Files → Downloads.</li>
+</ul>
+<p><strong>Save progress file</strong> writes a backup of the plate (see <em>Saving and backups</em>).</p>
+<p><strong>Count another plate on this scan</strong> starts the next plate on the same image, keeping the grid so you only need to move it. <strong>New plate with another scan</strong> starts a fresh plate. Both keep the current plate in the list.</p>
+<h3>The counts file</h3>
+<p>The file is separated by semicolons, with one row per well:</p>
+<pre><code>Date;Replicate;Plate name;WELL;Volume;Dilution;Prett;NA
+25-06-17;1;plate01;A1;5.0;1.0;2;0
 </code></pre>
 <table>
 <thead>
@@ -503,14 +529,14 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
 </tr>
 <tr>
 <td>NA</td>
-<td>Colonies with no type. Always 0 in this app. Kept for compatibility.</td>
+<td>Colonies without a type. Always 0, because every mark has a type. The column keeps the file in the lab's established counts format.</td>
 </tr>
 </tbody>
 </table>
 <h2>5. Load</h2>
-<p>Estimates the bacterial load per fly from every spot of each fly, by maximum likelihood. Open it after counting: the layout is only read here, so you stay blind to the treatments while you count.</p>
-<p><strong>Plates.</strong> Tick the plates on this device to include, and add <strong>COUNTS files</strong> for plates counted elsewhere or earlier. Each plate brings its own volumes and dilutions. Plates diluted per row, per column or as a whole plate can therefore be combined, so one table can cover a whole experiment.</p>
-<p><strong>Layout.</strong> A file with one row per fly: an <strong>ID</strong> column, and where the fly sits.</p>
+<p>The Load step estimates the bacterial load of each fly from all of that fly's spots, by maximum likelihood. Open it after counting. The layout is only read here, so you stay blind to the treatments while you count.</p>
+<p><strong>Plates.</strong> Tick the plates on this device to include, and add <strong>counts files</strong> for plates counted on another device or earlier. Each plate brings its own volumes and dilutions. That means plates diluted per row, per column or as a whole plate can be combined, so one table can cover a whole experiment.</p>
+<p><strong>Layout.</strong> A file with one row per fly, giving an <strong>ID</strong> and where the fly sits:</p>
 <table>
 <thead>
 <tr>
@@ -521,7 +547,7 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
 <tbody>
 <tr>
 <td><code>ROW</code></td>
-<td>The fly occupies every well of that row (A–H): its dilution series runs across the columns.</td>
+<td>The fly occupies every well of that row (A–H); its dilution series runs across the columns.</td>
 </tr>
 <tr>
 <td><code>COL</code></td>
@@ -533,7 +559,7 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
 </tr>
 <tr>
 <td><code>Plate</code></td>
-<td>Optional. Needed when different plates hold different flies; without it, the same flies sit in the same wells on every plate.</td>
+<td>Optional. Needed when different plates hold different flies. Without it, the same flies sit in the same wells on every plate.</td>
 </tr>
 <tr>
 <td>Any other column</td>
@@ -545,21 +571,23 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
 A;F01;Female;CantonS;24h
 B;F02;Male;CantonS;24h
 </code></pre>
-<p>Semicolons, commas or tabs all work. When the plate names in the layout and the counts are spelled differently (<code>plate01</code> and <code>plate1</code>), the app matches them on the number in the name and says so.</p>
-<p><strong>Estimation settings</strong></p>
+<p>The file can be separated by semicolons, commas or tabs. When plate names are spelled differently in the layout and the counts (<code>plate01</code> and <code>plate1</code>), the app matches them on the number in the name and says so.</p>
+<h3>Settings</h3>
 <ul>
 <li><strong>Colony type</strong> to estimate, or all types added together.</li>
-<li><strong>Spots with more colonies than can be read.</strong> Spots above the <strong>ceiling</strong> (default 50) can be handled three ways. These are three different estimators, not one strict option and one loose one.</li>
-<li><em>Leave them out and correct the rest for the ceiling</em>: a truncated Poisson.</li>
-<li><em>Keep them as counts known to exceed the ceiling</em>: a censored Poisson, which uses every spot.</li>
-<li><em>No ceiling</em>: every finite count is used as it stands.</li>
+<li><strong>Spots with more colonies than can be read.</strong> Counts stop being reliable once colonies merge, so spots above a <strong>ceiling</strong> (default 30) need special handling. There are three options, and they are different estimators rather than stricter or looser versions of one:</li>
+<li><em>Keep them as counts known to exceed the ceiling</em> (default). Each such spot contributes only the fact that it held more than 30 colonies. This is a censored Poisson model, and it uses every spot.</li>
+<li><em>Leave them out, and correct the rest for the ceiling</em>. Counts at or below the ceiling are modelled as Poisson counts known not to exceed it. This is a truncated Poisson model.</li>
+<li><em>No ceiling</em>. Every finite count is used as it stands.</li>
 <li><strong>Homogenate</strong>: µL per fly (default 250), used to scale the load to a whole fly.</li>
-<li><strong>Log base</strong>: log10 or log2. It rescales the numbers and changes no fit.</li>
-<li><strong>Dilution twice</strong>: only shown when a fly has the same dilution more than once. Choose whether to use both copies or the first only.</li>
+<li><strong>Log base</strong>: log10 or log2. It rescales the results and changes no fit.</li>
+<li><strong>Dilution twice</strong>: shown only when a fly has the same dilution more than once. Choose whether to use both copies or only the first.</li>
 </ul>
-<p><strong>Checks</strong> run before anything is estimated.</p>
+<p><strong>Why spots above the ceiling are kept by default.</strong> The two models were compared on simulated flies of known load, using the lab's design: dilutions 1, 10, 100, 5, 25, 125, 3, 9, 27, 81, 5 µL drops and a ceiling of 30. Keeping the spots gave estimates as precise or more precise at every load. At high loads, where only one spot falls under the ceiling, leaving spots out produced wild overestimates and keeping them did not. The weakness of keeping them is that it trusts counts just below the ceiling, and a ceiling of 30 limits that.</p>
+<h3>Checks</h3>
+<p>The app checks the data before estimating anything.</p>
 <ul>
-<li>These <strong>block the estimate</strong>:</li>
+<li>These <strong>stop the estimate</strong>:</li>
 <li>the same spot recorded twice (usually the same plate added twice);</li>
 <li>a well holding two flies in the layout;</li>
 <li>no plate matching the layout.</li>
@@ -569,10 +597,10 @@ B;F02;Male;CantonS;24h
 <li>layout plates with no counts;</li>
 <li>dilution factors between 0 and 1, which look like fractions typed by mistake;</li>
 <li>drops not yet looked at.</li>
-<li>Tables list the plates, the counts per dilution and the spots left out.</li>
 </ul>
+<p>Tables list the plates, the counts per dilution and the spots left out.</p>
 <h3>The per-fly table</h3>
-<p><strong>Save per-fly table</strong> writes <code>load_per_fly_&lt;date&gt;.csv</code> with the same columns as the R app, plus <code>Plates</code>. <strong>Save settings and checks</strong> writes a text record for the methods section.</p>
+<p><strong>Save per-fly table</strong> writes <code>load_per_fly_&lt;date&gt;.csv</code>. <strong>Save settings and checks</strong> writes a text record of every setting and check, for the methods section.</p>
 <table>
 <thead>
 <tr>
@@ -607,46 +635,56 @@ B;F02;Male;CantonS;24h
 </tr>
 <tr>
 <td>sumCFU, code</td>
-<td>Colonies used by the estimator; 1 = estimated, −1 = no estimate.</td>
+<td>Colonies used by the estimator. code 1 = estimated, −1 = no estimate.</td>
 </tr>
 <tr>
 <td>CFU_per_fly, log10_CFU_per_fly (or log2), se_log</td>
-<td>Load per fly and its log with standard error.</td>
+<td>Load per fly, and its log with standard error.</td>
 </tr>
 <tr>
 <td>Status</td>
-<td><em>Detected</em>. <em>Not detected</em>: every spot countable and empty. <em>Above the dilutions used</em>: no countable spot. <em>Estimation failed</em>.</td>
+<td><em>Detected</em>, <em>Not detected</em>, <em>Above the dilutions used</em> or <em>Estimation failed</em> (see below).</td>
 </tr>
 </tbody>
 </table>
-<p><strong>About the estimator.</strong> <code>loadEstimateOneSample()</code> and <code>loadEstimate()</code> were rewritten line by line in JavaScript. That includes R's root finder (<code>uniroot</code> with <code>extendInt = "downX"</code>) and R's method for Poisson probabilities. The rewrite was compared with the original R function, run in R 4.6.</p>
+<p>The statuses mean:</p>
 <ul>
-<li><strong>1,415 simulated samples</strong> under every ceiling setting, plus edge cases. The estimates agree to about 10⁻¹², with the same successes and failures.</li>
-<li><strong>The lab's 48-fly, 8-plate example.</strong> Counts, statuses and detection limits are identical, and the loads agree to 10⁻¹³.</li>
-<li>In the "leave them out" setting the standard error can differ from R in the ninth significant digit, which is far below anything reported.</li>
+<li><strong>Detected</strong>: a load was estimated.</li>
+<li><strong>Not detected</strong>: every spot was countable and empty.</li>
+<li><strong>Above the dilutions used</strong>: no spot was countable, so the load is higher than this series can measure.</li>
+<li><strong>Estimation failed</strong>: none of the above applies.</li>
+</ul>
+<p>The detection limit is the load a single colony implies, not the load at which detection becomes reliable.</p>
+<h3>How the estimate is made</h3>
+<p>Each spot's colony count is modelled as Poisson, with mean equal to the fly's load per µL multiplied by the spot's volume and dilution. The load is the value that maximises the likelihood over all of the fly's spots, with spots above the ceiling handled as described in <em>Settings</em>. The standard error comes from the curvature of the log-likelihood at the estimate.</p>
+<p>This estimator is the lab's <code>loadEstimate()</code> function, originally written in R. The app's version was checked against that R code, run in R 4.6:</p>
+<ul>
+<li>On <strong>1,415 simulated samples</strong> under every ceiling setting, plus edge cases, the two agree to about 10⁻¹² and succeed or fail on the same samples.</li>
+<li>On a <strong>48-fly, 8-plate example</strong>, counts, statuses and detection limits are identical, and the loads agree to 10⁻¹³.</li>
 </ul>
 <h2>Saving and backups</h2>
-<p><strong>Everything is saved automatically</strong>, at every tap, in the browser's storage on this device. That storage is not a file you can see in Files. The app reads it by itself: reopen the app and you are back where you stopped.</p>
-<p><strong>A web page cannot write files by itself on an iPad.</strong> Every saved file needs you to confirm it, goes to Downloads, and cannot be updated or deleted by the app afterwards.</p>
-<p><strong>The progress file</strong> (<code>PROGRESS_&lt;scan name&gt;.json</code>) is a backup you save by hand. It holds the marks, flags, grid position and plate settings, but not the image. Save one now and then, and move it next to the scan if you like.</p>
-<p><strong>To continue a plate on another device</strong> (or after the iPad's data was lost):</p>
+<p><strong>Everything is saved automatically</strong>, at every tap, in the browser's storage on the device. This storage is not a file you can see in Files. The app reads it by itself, so when you reopen the app you are back where you stopped.</p>
+<p><strong>A web page cannot write files by itself on an iPad.</strong> Every file it saves needs you to confirm it, goes to Downloads, and cannot be updated or deleted by the app afterwards.</p>
+<p><strong>The progress file</strong> (<code>PROGRESS_&lt;scan name&gt;.json</code>) is a backup you save by hand. It holds the marks, flags, grid position and plate settings, but not the image. Save one from time to time, and keep it next to the scan.</p>
+<p><strong>To continue a plate on another device</strong>, or after the iPad's data was lost:</p>
 <ol>
 <li>Copy the progress file and the original scan to that device.</li>
 <li>Open the app and go to <strong>Setup</strong>.</li>
-<li>Tap <strong>Open progress file…</strong> and choose the scan. Either order works. The app checks the scan's pixel size so the marks cannot land on the wrong image.</li>
+<li>Tap <strong>Open progress file…</strong> and choose the scan, in either order.</li>
 </ol>
-<p>The two devices do not stay in sync, so keep working on one. The layout file and the Load settings are not in the progress file.</p>
-<h2>Hosting</h2>
-<p>The app is one self-contained file, <code>index.html</code>, with no server code.</p>
+<p>The app checks the scan's pixel size, so the marks cannot land on the wrong image. The two devices do not stay in sync, so keep working on one of them. The layout file and the Load settings are not in the progress file.</p>
+<h2>Hosting and updating</h2>
+<p>The app is a single self-contained file, <code>index.html</code>, with no server code. It is hosted on GitHub Pages from this repository.</p>
 <ul>
-<li>It is hosted on GitHub Pages from this repository.</li>
-<li>To update it, upload a new <code>index.html</code> over the old one. Plates saved on the iPad are kept.</li>
-<li>Saved plates belong to the web address. If the app moves to another address, finish and export the plates first.</li>
-<li>The page loads its fonts from Google Fonts. Without internet it still works, in the device's standard fonts.</li>
+<li><strong>To update the app</strong>, replace <code>index.html</code>. Plates saved on the iPad are kept.</li>
+<li><strong>Saved plates belong to the web address.</strong> If the app moves to another address, finish and export the plates first.</li>
+<li><strong>Fonts</strong> load from Google Fonts. Without internet the app still works, in the device's standard fonts.</li>
 </ul>
+<h2>Source code</h2>
+<p><code>index.html</code> is assembled from the files in <code>src/</code>. See <code>src/DEVELOPING.md</code> for how to build it and run the tests. Change the source rather than editing <code>index.html</code> directly, so that the tests and the estimator checks can be rerun.</p>
 <h2>Limits</h2>
 <ul>
-<li>No plot in the Load tab. The per-fly table goes to the downstream R analyses.</li>
+<li>The Load step has no plot. The per-fly table is meant for analysis in R or another tool.</li>
 <li>On a phone the drop view is small, so crowded drops are harder to correct. Use an iPad for full plates.</li>
 </ul></article>
   </section>
@@ -685,8 +723,8 @@ plate02;A;F009;Female</pre>
         <div class="row"><label class="lbl" for="l-type" style="min-width:8em">Colony type</label><select id="l-type"></select></div>
         <label class="lbl">Spots with more colonies than can be read</label>
         <div class="radios" id="l-mode">
+          <label><input type="radio" name="l-mode" value="censor"><span>Keep them as counts known to exceed the ceiling (default)</span></label>
           <label><input type="radio" name="l-mode" value="ignore"><span>Leave them out, and correct the rest for the ceiling</span></label>
-          <label><input type="radio" name="l-mode" value="censor"><span>Keep them as counts known to exceed the ceiling</span></label>
           <label><input type="radio" name="l-mode" value="none"><span>No ceiling: use every finite count as it stands</span></label>
         </div>
         <div class="row" id="l-max-row"><label class="lbl" for="l-max" style="min-width:8em">Ceiling</label><input type="number" id="l-max" min="1" step="1"><span class="hint" style="margin:0">highest count still read reliably</span></div>
@@ -1439,7 +1477,7 @@ function defaults() {
 }
 let S = defaults();
 // load-tab settings and files are shared by all plates
-let LOADST = { files: [], layout: null, picked: {}, type: "", mode: "ignore", maxCFU: 50, homog: 250, logbase: 10, dupAction: "keep" };
+let LOADST = { files: [], layout: null, picked: {}, type: "", mode: "censor", maxCFU: 30, homog: 250, logbase: 10, dupAction: "keep", defaultsV: 2 };
 Object.defineProperty(S, "load", { get: () => LOADST, enumerable: false, configurable: true });
 function setS(st) { S = st; Object.defineProperty(S, "load", { get: () => LOADST, enumerable: false, configurable: true }); }
 let img = null, imgBlob = null, imgURL = null;
@@ -2501,14 +2539,20 @@ ro.observe($("#g-stage")); ro.observe($("#c-stage"));
   tmplLoad();
   let resumed = false;
   try {
-    const ld = await DB.get("load"); if (ld) LOADST = Object.assign(LOADST, JSON.parse(ld));
+    const ld = await DB.get("load");
+    if (ld) {
+      const stored = JSON.parse(ld);
+      LOADST = Object.assign(LOADST, stored);
+      // version 1.0 defaults: ceiling 30, spots above it kept as censored counts (applied once to older settings)
+      if (stored.defaultsV !== 2) { LOADST.mode = "censor"; LOADST.maxCFU = 30; LOADST.defaultsV = 2; }
+    }
     const pl = await DB.get("plates"); PLATES = pl ? JSON.parse(pl) : [];
     // one-time move from the single-plate storage of earlier versions
     if (!pl) {
       const raw = await DB.get("state"), blob = await DB.get("image");
       if (raw && blob) {
         const st = Object.assign(defaults(), JSON.parse(raw));
-        if (st.load) { const o = st.load; LOADST = Object.assign(LOADST, { files: o.files || [], layout: o.layout || null, type: o.type || "", mode: o.mode || "ignore", maxCFU: o.maxCFU || 50, homog: o.homog || 250, logbase: o.logbase || 10, dupAction: o.dupAction || "keep" }); delete st.load; }
+        if (st.load) { const o = st.load; LOADST = Object.assign(LOADST, { files: o.files || [], layout: o.layout || null, type: o.type || "", mode: o.mode || "ignore", maxCFU: o.maxCFU || 50, homog: o.homog || 250, logbase: o.logbase || 10, dupAction: o.dupAction || "keep" }); LOADST.mode = "censor"; LOADST.maxCFU = 30; LOADST.defaultsV = 2; delete st.load; }
         st.sid = newId(); st.imgKey = newId();
         await DB.put("img:" + st.imgKey, blob); await DB.put("st:" + st.sid, JSON.stringify(st));
         let seen = 0; for (const w of Object.values(st.wells)) if (w.seen) seen++;

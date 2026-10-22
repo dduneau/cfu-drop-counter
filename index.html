@@ -341,7 +341,7 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
       <aside class="side">
         <section>
           <h2>Place the drop grid</h2>
-          <p class="hint" style="margin:0">Drag the four corner markers onto the centres of the corner drops (<span id="corner-names">A1, A12, H1, H12</span>). A magnifier shows the spot under your finger. Then tap <b>Snap to wells</b>: it fits the grid to the well rims when each circle is already within about a fifth of a well of its place.</p>
+          <p class="hint" style="margin:0">Drag the four corner markers onto the centres of the corner drops (<span id="corner-names">A1, A12, H1, H12</span>). A magnifier shows the area under your finger. Then tap <b>Snap to wells</b>: it fits the grid to the well rims when each circle is already within about a fifth of a well of its place.</p>
           <div class="row"><button class="btn" id="snap">Snap to wells</button><button class="btn" id="zoom">Zoom to grid</button><button class="btn ghost" id="grid-reset">Reset corners</button></div>
           <div id="snap-msg" class="msg"></div>
         </section>
@@ -494,12 +494,19 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
     <article class="help"><h1>Method</h1>
 <p>This tab describes how the Load step estimates the bacterial load of each fly. It gives the R code that defines the estimator, and an R example that reproduces the app's per-fly table.</p>
 <h2>Model</h2>
-<p>Each fly's homogenate is spotted as drops at several dilutions. For drop <em>i</em> of a fly, let <em>v</em>ᵢ be the volume spotted (µL) and <em>d</em>ᵢ the dilution as a fraction (1 = undiluted, 1/25 = diluted 25-fold).</p>
+<p>Each fly's homogenate is plated as drops at several dilutions. For drop <em>i</em> of a fly, let <em>v</em>ᵢ be the volume plated (µL) and <em>d</em>ᵢ the dilution as a fraction (1 = undiluted, 1/25 = diluted 25-fold).</p>
 <p>The number of colonies <em>y</em>ᵢ in the drop is modelled as <strong>Poisson</strong>, with mean</p>
 <p><em>μ</em>ᵢ = <em>λ</em> · <em>v</em>ᵢ · <em>d</em>ᵢ</p>
 <p>Here <em>λ</em> is the load per µL of homogenate, the one unknown for that fly. Drops are assumed independent.</p>
-<h2>Spots above the ceiling</h2>
-<p>Colonies merge in crowded drops, so counts above a ceiling <em>M</em> (30 by default) are not read as exact. The setting <strong>Spots with more colonies than can be read</strong> decides what such a drop contributes to the likelihood:</p>
+<h2>Which drops enter the estimate</h2>
+<ul>
+<li>Drops marked <strong>Ignore drop</strong> (<code>NA</code> in the counts file) are left out.</li>
+<li>Drops in a row or column marked as not plated (dilution <code>NA</code>) are left out.</li>
+<li>Drops marked <strong>Too many</strong> (<code>Inf</code>) are treated as above the ceiling.</li>
+<li>Dilutions are entered as factors (10 = 1/10). A factor of 1 or less is treated as undiluted, and the app warns about factors between 0 and 1.</li>
+</ul>
+<h2>Drops above the ceiling</h2>
+<p>Colonies merge in crowded drops, so counts above a ceiling <em>M</em> (30 by default) are not read as exact. The setting <strong>Drops with more colonies than can be read</strong> decides what such a drop contributes to the likelihood:</p>
 <table>
 <thead>
 <tr>
@@ -525,7 +532,7 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
 <tr>
 <td>No ceiling</td>
 <td>P(<em>Y</em> = <em>y</em>ᵢ) for every finite count</td>
-<td>nothing (only drops marked too many)</td>
+<td>nothing (drops marked too many to count are left out)</td>
 <td>Poisson</td>
 </tr>
 </tbody>
@@ -541,16 +548,16 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
 <h2>Status of each fly</h2>
 <ul>
 <li><strong>Detected</strong>: a load was estimated.</li>
-<li><strong>Not detected</strong>: every drop was countable and empty.</li>
+<li><strong>Not detected</strong>: no colony on any drop of the fly, so no load could be estimated.</li>
 <li><strong>Above the dilutions used</strong>: no drop was countable, so the load is higher than the series can measure.</li>
-<li><strong>Estimation failed</strong>: none of the above applies.</li>
+<li><strong>Estimation failed</strong>: colonies were counted, but the estimator found no estimate.</li>
 </ul>
 <h2>Assumptions to keep in mind</h2>
 <ul>
 <li><strong>The standard error assumes pure Poisson variation between drops.</strong> Extra variation, from pipetting or clumped bacteria, makes the real uncertainty larger than this standard error.</li>
-<li><strong>Counts at or below the ceiling are taken as exact.</strong> If crowded drops near the ceiling are undercounted, the censored model inherits that error. A lower ceiling limits it.</li>
+<li><strong>Counts at or below the ceiling are taken as exact.</strong> If crowded drops near the ceiling are undercounted, the estimate inherits that error. A lower ceiling limits it.</li>
 </ul>
-<h2>Why spots above the ceiling are kept by default</h2>
+<h2>Why drops above the ceiling are kept by default</h2>
 <p>The two ways of handling the ceiling were compared on simulated flies of known load, using the lab's design:</p>
 <ul>
 <li>One fly per row, 10 drops of 5 µL at dilutions 1, 1/10, 1/100, 1/5, 1/25, 1/125, 1/3, 1/9, 1/27 and 1/81.</li>
@@ -590,16 +597,16 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
 </tr>
 </tbody>
 </table>
-<p>Over this range both settings are unbiased to within about 0.02 log10. Keeping the spots gives errors as small or smaller, because every drop contributes.</p>
+<p>Over this range both settings are unbiased to within about 0.02 log10. Keeping the drops above the ceiling gives errors as small or smaller, because every drop contributes.</p>
 <p><strong>Near the top of the measurable range, the two settings differ sharply.</strong></p>
 <ul>
 <li>At 10⁵·² CFU per fly, about 4 flies in 10 have a single countable drop.</li>
-<li>In a run of 4,000 flies at that load, leaving the spots out gave an estimate more than 10 times too high for 2% of the flies estimated (86 of 3,746), and more than twice too high for 6%. Keeping them never did.</li>
-<li>The reason: when the spots above the ceiling are left out, the one remaining count is treated as a count <em>known to be at most 30</em>. A count of, say, 25 under that condition fits a very high load almost as well as the true one. When the spots are kept, the 25 is an ordinary count, and the drops above the ceiling add that the load is high. Together they pin the load down.</li>
+<li>In a run of 4,000 flies at that load, leaving the drops above the ceiling out gave an estimate more than 10 times too high for 2% of the flies estimated (86 of 3,746), and more than twice too high for 6% (216). Keeping them never did.</li>
+<li>The reason: when the drops above the ceiling are left out, the one remaining count is treated as a count <em>known to be at most 30</em>. A count of, say, 25 under that condition fits a very high load almost as well as the true one. When the drops are kept, the 25 is an ordinary count, and the drops above the ceiling add that the load is high. Together they pin the load down.</li>
 </ul>
 <p>Above about 10⁵·⁴ CFU per fly, most flies have no countable drop at all. Both settings then report them as <em>Above the dilutions used</em>.</p>
-<p><strong>What keeping them costs.</strong> It takes the counts just below the ceiling at face value. When crowded drops were made to undercount by about 15% at 30 colonies, keeping the spots gave a bias of −0.07 log10 at 10⁴ CFU per fly, against −0.05 for leaving them out. A lower ceiling reduces this.</p>
-<p>The simulation is part of the app's source code (<code>tests/ceiling_simulation.js</code>), so it can be rerun or adapted to another design.</p>
+<p><strong>What keeping them costs.</strong> It takes the counts just below the ceiling at face value. When crowded drops were made to undercount by about 15% at 30 colonies, keeping them gave a bias of −0.07 log10 at 10⁴ CFU per fly, against −0.05 for leaving them out. A lower ceiling reduces this.</p>
+<p>Both simulations, the comparison over loads and the run near the top of the range, are part of the app's source code (<code>tests/ceiling_simulation.js</code>), so they can be rerun or adapted to another design.</p>
 <h2>The estimator in R</h2>
 <p>The app runs a JavaScript translation of the two R functions below, line by line, including R's root finder and its Poisson probability functions. The translation was checked against this R code, run in R 4.6:</p>
 <ul>
@@ -807,8 +814,9 @@ est
   <!-- HELP -->
   <section class="view pad" id="v-help" hidden>
     <article class="help"><h1>CFU Drop Counter</h1>
-<p><strong>Version 1.0</strong>. The version is shown next to the app's name and written into the progress files and the Load settings record.</p>
-<p>CFU Drop Counter counts bacterial colonies (CFU) in drops spotted on a 96-well plate lid filled with agar, and estimates the bacterial load of each fly from those counts. It runs in a web browser on an iPad, a phone or a computer, with nothing to install. Scans and counts are never uploaded. They stay on the device that opens the app.</p>
+<p><strong>Version 1.0</strong>. The version is shown next to the app's name, and written into the progress files and the Load settings record.</p>
+<p>CFU Drop Counter counts bacterial colonies (CFU) in 5 µL drops plated on a 96-well plate lid filled with agar, and estimates the bacterial load of each fly from those counts. It runs in a web browser on an iPad, a phone or a computer, with nothing to install. Scans and counts are never uploaded. They stay on the device that opens the app.</p>
+<p>Throughout this guide, a <strong>drop</strong> is the drop of homogenate in one well, and a <strong>colony</strong> is one CFU in that drop.</p>
 <p>The work goes through six steps, shown at the top of the app:</p>
 <ol>
 <li><strong>Setup</strong>: load the scan and describe the plate.</li>
@@ -818,62 +826,67 @@ est
 <li><strong>Export</strong>: save the counts as a CSV file.</li>
 <li><strong>Load</strong>: estimate the load per fly from one or several plates and a layout file.</li>
 </ol>
-<p>The <strong>Method</strong> tab explains the statistics and gives the R code of the estimator. <strong>Help</strong> shows this guide.</p>
+<p>The <strong>Method</strong> tab explains the statistics behind the Load step and gives its R code. <strong>Help</strong> shows this guide.</p>
 <h2>Getting started</h2>
 <ol>
 <li>Open the app's address in Safari on the iPad.</li>
-<li>Tap <strong>Share → Add to Home Screen</strong>, and from then on open the app from that icon. Safari can clear a website's stored data after 7 days without a visit. Apps opened from the Home Screen are exempt.</li>
-<li>Put the scans where the iPad can reach them: Files, iCloud Drive or AirDrop. Use the original image files. Photos and messaging apps can resize images.</li>
+<li>Tap <strong>Share → Add to Home Screen</strong>, and from then on open the app from that icon. Safari can clear a website's stored data after 7 days without a visit, but apps opened from the Home Screen are exempt.</li>
+<li>Put the scans where the iPad can reach them: Files, iCloud Drive or AirDrop. Use the original image files, because Photos and messaging apps can resize images.</li>
 </ol>
 <p><strong>Use example scan</strong> on the Setup screen loads an example plate to try the app.</p>
 <h2>1. Setup</h2>
-<p><strong>Plates on this device</strong> lists every plate you have started. Each entry shows how many drops you have checked, when the plate was last edited, and whether a CSV or a backup file has been saved. <strong>Open</strong> returns to a plate exactly where you left it. <strong>×</strong> deletes it after you confirm. <strong>New plate</strong> starts an empty one.</p>
-<p><strong>Scan.</strong> Choose the plate image (PNG or JPEG; TIFF opens in Safari only). Choosing a scan for a plate you have already worked on starts a new plate, and the old one stays in the list.</p>
+<p><strong>Plates on this device</strong> lists every plate you have started. Each entry shows how many drops you have checked, when the plate was last edited, and whether a CSV or a progress file has been saved for it.</p>
+<ul>
+<li><strong>Open</strong> returns to a plate exactly where you left it.</li>
+<li><strong>×</strong> deletes a plate after you confirm.</li>
+<li><strong>New plate</strong> starts an empty one.</li>
+</ul>
+<p><strong>Scan.</strong> Choose the plate image: PNG or JPEG, or TIFF in Safari only. Choosing a scan while the current plate already has work on it starts a new plate, and the old one stays in the list.</p>
 <p><strong>Plate information.</strong> These fields become the first columns of the counts file, with one value for the whole plate. Fields can be text, whole numbers, decimals or yes/no, and you can add or remove them. Two field names have a special role:</p>
 <ul>
 <li><strong>Plate name</strong> identifies the plate. The Load step uses it to match plates with the layout file. Give every plate its own name with a single number in it, such as <code>plate01</code>. Avoid names like <code>25-06-17_plate01</code>, because plates can be matched on the number in the name.</li>
-<li><strong>Replicate</strong> appears next to the plate name in the lists, and goes up by one when you count another plate on the same scan.</li>
+<li><strong>Replicate</strong> appears next to the plate name in the lists. When it is a whole number, it goes up by one when you count another plate on the same scan.</li>
 </ul>
-<p><strong>Colony types.</strong> One row per kind of colony to count, each with a colour and an optional keyboard key. The default is a single type, Prett.</p>
-<p><strong>Plate format.</strong> 8 rows × 12 columns for a 96-well lid. It is locked as soon as the plate has counts, because those counts only make sense in that format. To change it, use <strong>Clear all counts of this plate</strong>, which can be undone on the Count screen.</p>
+<p><strong>Colony types.</strong> One row per kind of colony, each with a colour and an optional keyboard key. The default is a single type, Prett. Removing a type also removes the colonies marked with it on the current plate.</p>
+<p><strong>Plate format.</strong> 8 rows × 12 columns for a 96-well lid. It is locked as soon as the plate has counts, because those counts only make sense in that format. To change it, use <strong>Clear all counts of this plate</strong>. This can be undone on the Count screen.</p>
 <p><strong>Volume and dilution</strong> (folded away, because counting does not use them). The volume per drop and the dilution of each well are written into the counts file, and the Load step uses them.</p>
 <ul>
 <li>The dilution can be one value for the whole plate, one per row, or one per column.</li>
 <li>Write dilutions as factors: 1 = undiluted, 10 = 1/10, 25 = 1/25.</li>
-<li><strong>Leave a box empty for a row or column that was not spotted.</strong> Those wells get <code>NA</code> as their dilution and are left out of the load estimate.</li>
+<li><strong>Leave a box empty for a row or column that was not plated.</strong> Those wells get <code>NA</code> as their dilution and are left out of the load estimate.</li>
 </ul>
-<p>The app remembers these settings for the next plate.</p>
+<p>The plate information, colony types, format, volume and dilution carry over to the next plate.</p>
 <h2>2. Grid</h2>
 <ol>
-<li>Drag the four corner markers onto the centres of the corner drops: <strong>A1, A12, H1 and H12</strong>. A magnifier shows the spot under your finger. On a scan holding two plates, <strong>Zoom to grid</strong> enlarges the plate you are placing.</li>
-<li>Tap <strong>Snap to wells</strong>. It fits the grid to the well rims when each circle is already within about a fifth of a well of its place. <strong>Undo</strong> puts the corners back.</li>
+<li>Drag the four corner markers onto the centres of the corner drops: <strong>A1, A12, H1 and H12</strong>. A magnifier shows the area under your finger. On a scan holding two plates, <strong>Zoom to grid</strong> enlarges the plate you are placing.</li>
+<li>Tap <strong>Snap to wells</strong>. It fits the grid to the well rims when each circle is already within about a fifth of a well of its place. <strong>Undo</strong> puts the corners back, and <strong>Reset corners</strong> starts again.</li>
 </ol>
 <p>A plate scanned sideways works too: put each marker on the well with that name. For a lid photographed with the dilution series running down the image, A1 is top left, A12 bottom left, H1 top right and H12 bottom right.</p>
 <p><strong>Next: tune the detection</strong> opens the Tune step.</p>
 <h2>3. Tune</h2>
 <p>Tune shows eight drops picked across the plate, from empty to crowded, with the colonies the detection finds in each. Every change of a setting updates them at once, so you can judge a setting on several kinds of drop together. <strong>Show other drops</strong> picks another eight. Tap a drop to open it in Count.</p>
 <ul>
-<li><strong>Image used by the detection</strong>: brightness, contrast and sharpness of the image the detection works on. They help most on dim or low-contrast images. On a sharp, well-lit scan they make little difference.</li>
+<li><strong>Image used by the detection</strong>: the brightness, contrast and sharpness of the image the detection works on. They help most on dim or low-contrast images; on a sharp, well-lit scan they make little difference.</li>
 <li><strong>Counting area</strong>: the circle in which colonies are detected. Keep it just inside the well rim.</li>
-<li><strong>Sensitivity</strong>: higher finds fainter colonies; lower ignores faint spots.</li>
+<li><strong>Sensitivity</strong>: higher finds fainter colonies; lower ignores faint marks.</li>
 <li><strong>Colony size</strong>: the expected size of one colony, which decides how merged colonies are split.</li>
 </ul>
 <p>These settings are saved with the plate, and the next plate starts from the same ones.</p>
 <p><strong>Detect on all drops</strong> runs the detection on the whole plate and opens Count. <strong>Count by hand, no detection</strong> skips it.</p>
-<p><strong>Coming back to Tune later is safe.</strong> Once the plate has counts, the main button becomes <strong>Detect again on the drops not checked yet</strong>: drops you have looked at or corrected are never touched. <strong>Detect again on every drop…</strong> replaces those as well, after a confirmation. Either run can be undone with <strong>Undo</strong> on the Count screen.</p>
+<p><strong>Coming back to Tune later is safe.</strong> Once the plate has counts, the main button becomes <strong>Detect again on the drops not checked yet</strong>. Drops you have looked at or corrected are never touched. <strong>Detect again on every drop…</strong> replaces those as well, after a confirmation. Either run can be undone with <strong>Undo</strong> on the Count screen.</p>
 <h2>4. Count</h2>
 <p>The drop fills the screen, with the detected colonies circled.</p>
 <ul>
-<li><strong>Tap an empty spot</strong> to add a colony of the selected type.</li>
+<li><strong>Tap anywhere on the drop</strong> to add a colony of the selected type there.</li>
 <li><strong>Tap a mark</strong> to remove it. With several colony types, switch <strong>Tap a mark to</strong> to <strong>Change type</strong> to give it the selected type instead.</li>
 <li><strong>Too many</strong> next to a type means the drop cannot be counted for that type. It is saved as <code>Inf</code>.</li>
-<li><strong>Empty drop</strong> sets the count to 0.</li>
+<li><strong>Empty drop</strong> removes the marks and saves the count as 0.</li>
 <li><strong>Ignore drop</strong> leaves the drop out; it is saved as <code>NA</code>.</li>
-<li><strong>Undo</strong> and <strong>Redo</strong> step back and forward through your changes: added or removed colonies, changed types, the drop flags, Clear marks and re-detections. Each plate keeps its own history of the last 100 steps, even after closing the app. A new change after an undo starts a new branch, so the steps you undid can no longer be redone.</li>
-<li>Move between drops with <strong>Previous / Next</strong>, by swiping left or right on the drop, or with the plate map, where each well shows its count. On the map, shaded wells were detected but not yet looked at, and wells outlined in green were corrected by hand. <strong>Jump to next unchecked drop</strong> finds the next drop you have not looked at.</li>
-<li><strong>Hold to hide marks</strong> (bottom left of the drop) shows the drop without any circles for as long as you hold it, so you can check that no colony is hidden under a mark. On a keyboard, hold H.</li>
+<li><strong>Undo</strong> and <strong>Redo</strong> step back and forward through your changes. That covers added or removed colonies, changed types, the drop flags, Clear marks, Clear all counts and re-detections. Each plate keeps its own history of the last 100 steps, even after the app is closed. A new change after an undo starts a new branch, so the steps you undid can no longer be redone.</li>
+<li><strong>Move between drops</strong> with <strong>Previous / Next</strong>, by swiping left or right on the drop, or with the plate map, where each well shows its count. On the map, shaded wells were detected but not yet looked at, and wells outlined in green were corrected by hand. <strong>Jump to next unchecked drop</strong> finds the next drop you have not looked at.</li>
+<li><strong>Hold to hide marks</strong> (bottom left of the drop) shows the drop without any circles for as long as you hold it, so you can check that no colony is hidden under a mark.</li>
 <li><strong>Detect again on this drop</strong> reruns the detection on the drop shown, and on no other. Its <strong>Sensitivity</strong> and <strong>Colony size</strong> sliders start from the plate's Tune settings on every drop, so they only rescue a difficult drop. To change the settings for the whole plate, go back to Tune.</li>
-<li><strong>View: Brightness, Contrast and Sharpness</strong> change only what you see on this screen, to check a difficult drop. They do not affect the detection.</li>
+<li><strong>View: Brightness, Contrast and Sharpness</strong> change only what you see on this screen, to check a difficult drop. They do not affect the detection, and they are kept on this device for every plate.</li>
 </ul>
 <p>With a keyboard:</p>
 <ul>
@@ -881,7 +894,7 @@ est
 <li>The type keys select a colony type, and holding H hides the marks.</li>
 <li>Cmd/Ctrl + Z undoes, and Cmd/Ctrl + Shift + Z (or Ctrl + Y) redoes.</li>
 </ul>
-<p><strong>How well detection works.</strong> On the lab's scans, about 85% of countable drops came within ±2 colonies of a manual count, with a mean error near one colony. Detection misses colonies in crowded drops where they merge, and occasionally splits a large colony in two. It is a starting point, not a count: look at every drop before exporting.</p>
+<p><strong>How well detection works.</strong> On a test scan of two plates (157 countable drops, compared with manual counts), about 85% of drops came within ±2 colonies, with a mean error of about one colony. Detection misses colonies in crowded drops where they merge, and occasionally splits a large colony in two. It is a starting point, not a count: look at every drop before exporting. Because every drop is checked, the quality of the detection changes how long counting takes, not the final counts.</p>
 <h2>5. Export</h2>
 <p>The Export screen shows a summary of the plate and a table of counts per drop. Shaded cells were detected but not looked at.</p>
 <p><strong>Save CSV</strong> writes the counts file, named after the scan: <code>COUNTS_&lt;scan name&gt;.csv</code>.</p>
@@ -920,7 +933,7 @@ est
 </tr>
 <tr>
 <td>Dilution</td>
-<td>The dilution factor of that well, or <code>NA</code> when the well was not spotted.</td>
+<td>The dilution factor of that well, or <code>NA</code> when the well was not plated.</td>
 </tr>
 <tr>
 <td>One column per colony type</td>
@@ -933,7 +946,7 @@ est
 </tbody>
 </table>
 <h2>6. Load</h2>
-<p>The Load step estimates the bacterial load of each fly from all of that fly's spots, by maximum likelihood. Open it after counting. The layout is only read here, so you stay blind to the treatments while you count.</p>
+<p>The Load step estimates the bacterial load of each fly from all of that fly's drops, by maximum likelihood. Open it after counting. The layout is only read here, so you stay blind to the treatments while you count.</p>
 <p><strong>Plates.</strong> Tick the plates on this device to include, and add <strong>counts files</strong> for plates counted on another device or earlier. Each plate brings its own volumes and dilutions. That means plates diluted per row, per column or as a whole plate can be combined, so one table can cover a whole experiment.</p>
 <p><strong>Layout.</strong> A file with one row per fly, giving an <strong>ID</strong> and where the fly sits:</p>
 <table>
@@ -974,30 +987,32 @@ B;F02;Male;CantonS;24h
 <h3>Settings</h3>
 <ul>
 <li><strong>Colony type</strong> to estimate, or all types added together.</li>
-<li><strong>Spots with more colonies than can be read.</strong> Counts stop being reliable once colonies merge, so spots above a <strong>ceiling</strong> (default 30) need special handling. There are three options, and they are different estimators rather than stricter or looser versions of one:</li>
-<li><em>Keep them as counts known to exceed the ceiling</em> (default). Each such spot contributes only the fact that it held more than 30 colonies. This is a censored Poisson model, and it uses every spot.</li>
-<li><em>Leave them out, and correct the rest for the ceiling</em>. Counts at or below the ceiling are modelled as Poisson counts known not to exceed it. This is a truncated Poisson model.</li>
+<li><strong>Drops with more colonies than can be read.</strong> Counts stop being reliable once colonies merge, so drops above a <strong>ceiling</strong> (default 30) need special handling. There are three options, and they are different estimators rather than stricter or looser versions of one:</li>
+<li><em>Keep them as counts known to exceed the ceiling</em> (default). Each such drop contributes only the fact that it held more than 30 colonies. This is a censored Poisson model, and it uses every drop.</li>
+<li><em>Leave them out, and correct the rest for the ceiling</em>. The remaining counts are modelled as Poisson counts known not to exceed the ceiling. This is a right-truncated Poisson model.</li>
 <li><em>No ceiling</em>. Every finite count is used as it stands.</li>
 <li><strong>Homogenate</strong>: µL per fly (default 250), used to scale the load to a whole fly.</li>
 <li><strong>Log base</strong>: log10 or log2. It rescales the results and changes no fit.</li>
 <li><strong>Dilution twice</strong>: shown only when a fly has the same dilution more than once. Choose whether to use both copies or only the first.</li>
 </ul>
-<p><strong>Why spots above the ceiling are kept by default.</strong> In simulations of the lab's 10-dilution design, keeping them gave errors as small or smaller than leaving them out at every load. Near the top of the measurable range, where a fly often has a single countable drop, leaving them out sometimes gave estimates more than 10 times too high; keeping them did not. The <strong>Method</strong> tab gives the simulation, the numbers and the reason.</p>
+<p><strong>Why drops above the ceiling are kept by default.</strong> In simulations of the lab's 10-dilution design, keeping them gave errors as small or smaller than leaving them out, at every load. Near the top of the measurable range, where a fly often has a single countable drop, leaving them out sometimes gave estimates more than 10 times too high; keeping them did not. The <strong>Method</strong> tab gives the simulation, the numbers and the reason.</p>
 <h3>Checks</h3>
 <p>The app checks the data before estimating anything.</p>
 <ul>
 <li>These <strong>stop the estimate</strong>:</li>
-<li>the same spot recorded twice (usually the same plate added twice);</li>
+<li>the same drop recorded twice (usually the same plate added twice);</li>
 <li>a well holding two flies in the layout;</li>
-<li>no plate matching the layout.</li>
+<li>no plate matching the layout;</li>
+<li>two different plates whose names reduce to the same number.</li>
 <li>These are <strong>warnings</strong>:</li>
 <li>wells with colonies but no fly;</li>
 <li>plates with no fly from the layout;</li>
 <li>layout plates with no counts;</li>
 <li>dilution factors between 0 and 1, which look like fractions typed by mistake;</li>
+<li>drops without a dilution, which are left out;</li>
 <li>drops not yet looked at.</li>
 </ul>
-<p>Tables list the plates, the counts per dilution and the spots left out.</p>
+<p>Tables list the plates, the counts per dilution and the drops left out.</p>
 <h3>The per-fly table</h3>
 <p><strong>Save per-fly table</strong> writes <code>load_per_fly_&lt;date&gt;.csv</code>. <strong>Save settings and checks</strong> writes a text record of every setting and check, for the methods section.</p>
 <table>
@@ -1014,15 +1029,15 @@ B;F02;Male;CantonS;24h
 </tr>
 <tr>
 <td>Plates</td>
-<td>The plates that contributed spots.</td>
+<td>The plates that contributed drops.</td>
 </tr>
 <tr>
-<td>Spots, Countable, Above_ceiling, Too_many</td>
-<td>How the fly's spots were classified.</td>
+<td>Drops, Countable, Above_ceiling, Too_many</td>
+<td>The number of drops used for the fly, and how they were classified.</td>
 </tr>
 <tr>
 <td>Total_CFU</td>
-<td>All finite colonies counted for that fly.</td>
+<td>All finite colony counts of that fly added up.</td>
 </tr>
 <tr>
 <td>LOD_per_fly</td>
@@ -1038,36 +1053,36 @@ B;F02;Male;CantonS;24h
 </tr>
 <tr>
 <td>CFU_per_fly, log10_CFU_per_fly (or log2), se_log</td>
-<td>Load per fly, and its log with standard error.</td>
+<td>Load per fly, its log, and the standard error of the log.</td>
 </tr>
 <tr>
 <td>Status</td>
-<td><em>Detected</em>, <em>Not detected</em>, <em>Above the dilutions used</em> or <em>Estimation failed</em> (see below).</td>
+<td>One of the four statuses below.</td>
 </tr>
 </tbody>
 </table>
 <p>The statuses mean:</p>
 <ul>
 <li><strong>Detected</strong>: a load was estimated.</li>
-<li><strong>Not detected</strong>: every spot was countable and empty.</li>
-<li><strong>Above the dilutions used</strong>: no spot was countable, so the load is higher than this series can measure.</li>
-<li><strong>Estimation failed</strong>: none of the above applies.</li>
+<li><strong>Not detected</strong>: no colony on any drop of the fly, so no load could be estimated.</li>
+<li><strong>Above the dilutions used</strong>: no drop was countable, so the load is higher than this series can measure.</li>
+<li><strong>Estimation failed</strong>: colonies were counted, but the estimator found no estimate.</li>
 </ul>
 <p>The detection limit is the load a single colony implies, not the load at which detection becomes reliable.</p>
 <h4>How the estimate is made</h4>
-<p>Each spot's colony count is modelled as Poisson, with mean equal to the fly's load per µL multiplied by the spot's volume and dilution. The load is estimated by maximum likelihood over all of the fly's spots. With the default setting, spots above the ceiling make it a censored Poisson model. With <em>Leave them out</em>, it is a right-truncated Poisson model.</p>
+<p>Each drop's colony count is modelled as Poisson, with mean equal to the fly's load per µL multiplied by the drop's volume and dilution. The load is estimated by maximum likelihood over all of the fly's drops. With the default setting this is a censored Poisson model, and with <em>Leave them out</em> a right-truncated Poisson model.</p>
 <p>The <strong>Method</strong> tab gives the full description: the likelihood for each setting, the standard error, the detection limit and the assumptions. It also shows the R code of the estimator, the lab's <code>loadEstimate()</code>, which the app runs translated into JavaScript, and an R example that reproduces the per-fly table from a counts file and a layout file. The translation agrees with the R code to about 10⁻¹².</p>
 <h2>Saving and backups</h2>
 <p><strong>Everything is saved automatically</strong>, at every tap, in the browser's storage on the device. This storage is not a file you can see in Files. The app reads it by itself, so when you reopen the app you are back where you stopped.</p>
 <p><strong>A web page cannot write files by itself on an iPad.</strong> Every file it saves needs you to confirm it, goes to Downloads, and cannot be updated or deleted by the app afterwards.</p>
-<p><strong>The progress file</strong> (<code>PROGRESS_&lt;scan name&gt;.json</code>) is a backup you save by hand. It holds the marks, flags, grid position and plate settings, but not the image. Save one from time to time, and keep it next to the scan.</p>
+<p><strong>The progress file</strong> (<code>PROGRESS_&lt;scan name&gt;.json</code>) is a backup you save by hand. It holds the marks, the flags, the grid position, the plate settings and the Tune settings. It does not hold the image or the undo history. Save one from time to time, and keep it next to the scan.</p>
 <p><strong>To continue a plate on another device</strong>, or after the iPad's data was lost:</p>
 <ol>
 <li>Copy the progress file and the original scan to that device.</li>
 <li>Open the app and go to <strong>Setup</strong>.</li>
 <li>Tap <strong>Open progress file…</strong> and choose the scan, in either order.</li>
 </ol>
-<p>The app checks the scan's pixel size, so the marks cannot land on the wrong image. The two devices do not stay in sync, so keep working on one of them. The layout file and the Load settings are not in the progress file.</p>
+<p>The app checks the scan's pixel size, so the marks cannot land on the wrong image. The reopened plate is added to the list as a plate of its own. The two devices do not stay in sync, so keep working on one of them. The layout file and the Load settings are not in the progress file.</p>
 <h2>Hosting and updating</h2>
 <p>The app is a single self-contained file, <code>index.html</code>, with no server code. It is hosted on GitHub Pages from this repository.</p>
 <ul>
@@ -1086,7 +1101,7 @@ B;F02;Male;CantonS;24h
 
   <!-- LOAD -->
   <section class="view pad" id="v-load" hidden>
-    <p class="lead">Bacterial load per fly, estimated by maximum likelihood from every spot of each fly: the plate being counted and any other plates you add. The estimator is the lab’s loadEstimate(), rewritten for the browser and checked against the R version.</p>
+    <p class="lead">Bacterial load per fly, estimated by maximum likelihood from every drop of each fly: the plate being counted and any other plates you add. The estimator is the lab’s loadEstimate(), rewritten for the browser and checked against the R version.</p>
     <div class="cards">
       <div class="card col">
         <h2>Plates</h2>
@@ -1116,7 +1131,7 @@ plate02;A;F009;Female</pre>
       <div class="card col">
         <h2>Estimation</h2>
         <div class="row"><label class="lbl" for="l-type" style="min-width:8em">Colony type</label><select id="l-type"></select></div>
-        <label class="lbl">Spots with more colonies than can be read</label>
+        <label class="lbl">Drops with more colonies than can be read</label>
         <div class="radios" id="l-mode">
           <label><input type="radio" name="l-mode" value="censor"><span>Keep them as counts known to exceed the ceiling (default)</span></label>
           <label><input type="radio" name="l-mode" value="ignore"><span>Leave them out, and correct the rest for the ceiling</span></label>
@@ -1681,7 +1696,7 @@ const LoadEst = (() => {
     return { spots, info };
   }
   // Layout -> rows of {plate|null, wells[], id, meta}
-  const OUT_COLS = ["ID", "Plates", "Spots", "Countable", "Above_ceiling", "Too_many", "Total_CFU", "LOD_per_fly", "load", "logload", "se.logload", "sumCFU", "code", "CFU_per_fly", "log10_CFU_per_fly", "log2_CFU_per_fly", "se_log", "Status"];
+  const OUT_COLS = ["ID", "Plates", "Drops", "Countable", "Above_ceiling", "Too_many", "Total_CFU", "LOD_per_fly", "load", "logload", "se.logload", "sumCFU", "code", "CFU_per_fly", "log10_CFU_per_fly", "log2_CFU_per_fly", "se_log", "Status"];
   function buildLayout(tab, nRows, nCols) {
     const cols = tab.cols, L = { problems: [], notes: [] };
     const ic = guess(cols, "id"), wc = guess(cols, "well"), rc = guess(cols, "row"), cc = guess(cols, "col"), pc = guess(cols, "plate");
@@ -1743,7 +1758,7 @@ const LoadEst = (() => {
     for (const s of spots) { const k = s.plateRaw + "\u0001" + s.well + "\u0001" + s.rep; seen.set(k, (seen.get(k) || 0) + 1); }
     for (const [k, n] of seen) if (n > 1) { const [p, w, r] = k.split("\u0001"); dupSpots.push({ Plate: p, Well: w, Replicate: r, Times: n }); }
     res.tables.dupSpots = dupSpots;
-    if (dupSpots.length) res.blocking.push({ text: `The same spot is recorded ${dupSpots.length === 1 ? "twice" : "more than once"} (${dupSpots.length} spot(s)): usually the same plate added twice.` });
+    if (dupSpots.length) res.blocking.push({ text: `The same drop is recorded more than once (${dupSpots.length} drop${dupSpots.length === 1 ? "" : "s"}): usually the same plate added twice.` });
     // plate-name collisions under number matching
     if (match === "number") {
       const raw = new Map(); for (const s of spots) { if (!raw.has(s.plate)) raw.set(s.plate, new Set()); raw.get(s.plate).add(s.plateRaw); }
@@ -1757,8 +1772,8 @@ const LoadEst = (() => {
     const plates = new Map();
     for (const s of spots) { if (!plates.has(s.plate)) plates.set(s.plate, { Plate: s.plateRaw, names: new Set(), Spots: 0, Joined: 0, Flies: new Set(), Source: new Set() }); const p = plates.get(s.plate); p.names.add(s.plateRaw); p.Spots++; p.Source.add(s.source); }
     for (const m of merged) { const p = plates.get(m.plate); p.Joined++; p.Flies.add(m.id); }
-    res.tables.plates = [...plates.values()].map((p) => ({ Plate: [...p.names].join(", "), Source: [...p.Source].join(", "), Spots: p.Spots, "Spots with a fly": p.Joined, Flies: p.Flies.size }));
-    const noFly = res.tables.plates.filter((p) => p["Spots with a fly"] === 0);
+    res.tables.plates = [...plates.values()].map((p) => ({ Plate: [...p.names].join(", "), Source: [...p.Source].join(", "), Drops: p.Spots, "Drops with a fly": p.Joined, Flies: p.Flies.size }));
+    const noFly = res.tables.plates.filter((p) => p["Drops with a fly"] === 0);
     if (noFly.length && layout.rows.length) res.warnings.push({ text: `No fly from the layout sits on ${noFly.map((p) => p.Plate).join(", ")}.` });
     if (byPlate) {
       const lp = new Map(); for (const r of layout.rows) lp.set(plateKey(r.plateRaw, match), r.plateRaw);
@@ -1768,8 +1783,8 @@ const LoadEst = (() => {
     // colonies but no fly
     const orph = new Map();
     for (const s of spots) if (s.well && (s.cfu > 0) && flyAt.get(lk(s.plate, s.well)) === undefined) orph.set(s.plateRaw, (orph.get(s.plateRaw) || 0) + 1);
-    res.tables.orphans = [...orph].map(([p, n]) => ({ Plate: p, "Spots with colonies": n }));
-    if (orph.size) res.warnings.push({ text: `Some wells hold colonies but no fly in the layout (${[...orph.values()].reduce((a, b) => a + b, 0)} spot(s)).` });
+    res.tables.orphans = [...orph].map(([p, n]) => ({ Plate: p, "Drops with colonies": n }));
+    if (orph.size) res.warnings.push({ text: `Some wells hold colonies but no fly in the layout (${[...orph.values()].reduce((a, b) => a + b, 0)} drop(s)).` });
     // the same dilution recorded twice for a fly
     merged.sort((a, b) => (a.plate < b.plate ? -1 : a.plate > b.plate ? 1 : a.well < b.well ? -1 : a.well > b.well ? 1 : 0));
     const cp = new Map();
@@ -1788,25 +1803,25 @@ const LoadEst = (() => {
     const frac = [...new Set(spots.map((s) => s.dilFactor).filter((f) => f > 0 && f < 1))].sort();
     if (frac.length) res.warnings.push({ text: `Dilution factor(s) ${frac.join(", ")} are between 0 and 1. Factors are written as 1 (undiluted), 5 for 1/5, 25 for 1/25, so these are read as undiluted.` });
     const noDil = spots.filter((s) => isNaN(s.dilFrac)).length;
-    if (noDil) res.warnings.push({ kind: "info", text: `${noDil} spot(s) have no dilution (a row or column marked as not spotted) and are left out.` });
+    if (noDil) res.warnings.push({ kind: "info", text: `${noDil} drop(s) have no dilution (a row or column marked as not spotted) and are left out.` });
     // counts per dilution
     let use = merged;
     if (settings.dupAction === "first") use = merged.filter((m) => m.copy === 1);
     const ser = new Map();
-    for (const m of use) { const k = m.dilFactor; if (!ser.has(k)) ser.set(k, { Dilution: k, Spots: 0, Countable: 0, "Above ceiling": 0, "Too many": 0, c: [] }); const e = ser.get(k), st = cfuClass(m.cfu, mx); e.Spots++; if (isNaN(m.cfu)) continue; if (st === "countable") { e.Countable++; if (m.cfu > 0) e.c.push(m.cfu); } else if (st === "above the ceiling") e["Above ceiling"]++; else e["Too many"]++; }
+    for (const m of use) { const k = m.dilFactor; if (!ser.has(k)) ser.set(k, { Dilution: k, Drops: 0, Countable: 0, "Above ceiling": 0, "Too many": 0, c: [] }); const e = ser.get(k), st = cfuClass(m.cfu, mx); e.Drops++; if (isNaN(m.cfu)) continue; if (st === "countable") { e.Countable++; if (m.cfu > 0) e.c.push(m.cfu); } else if (st === "above the ceiling") e["Above ceiling"]++; else e["Too many"]++; }
     res.tables.series = [...ser.values()].sort((a, b) => a.Dilution - b.Dilution).map((e) => { const c = e.c.sort((a, b) => a - b); const med = c.length ? (c.length % 2 ? c[c.length >> 1] : (c[c.length / 2 - 1] + c[c.length / 2]) / 2) : NaN; const { c: _, ...r } = e; return { ...r, "Median countable": med }; });
     res.tables.dropped = [
-      { Reason: "Well could not be read", Spots: spots.filter((s) => !s.well).length },
-      { Reason: "No dilution set", Spots: noDil },
-      { Reason: "No volume", Spots: spots.filter((s) => !(s.volume > 0)).length },
-      { Reason: "Colony count missing (ignored drop)", Spots: spots.filter((s) => isNaN(s.cfu)).length },
-      { Reason: "Spot in a well with no fly", Spots: Math.max(0, spots.length - merged.length) },
+      { Reason: "Well could not be read", Drops: spots.filter((s) => !s.well).length },
+      { Reason: "No dilution set", Drops: noDil },
+      { Reason: "No volume", Drops: spots.filter((s) => !(s.volume > 0)).length },
+      { Reason: "Colony count missing (ignored drop)", Drops: spots.filter((s) => isNaN(s.cfu)).length },
+      { Reason: "Drop in a well with no fly", Drops: Math.max(0, spots.length - merged.length) },
     ];
     res.nMerged = merged.length; res.nFlies = new Set(merged.map((m) => m.id)).size;
     if (res.blocking.length) return res;
     // estimation
     const d = use.filter((m) => !isNaN(m.cfu) && !isNaN(m.dilFrac) && !isNaN(m.volume));
-    if (!d.length) { res.blocking.push({ text: "No spot has a count, a dilution and a volume." }); return res; }
+    if (!d.length) { res.blocking.push({ text: "No drop has a count, a dilution and a volume." }); return res; }
     if (d.some((m) => m.cfu < 0)) { res.blocking.push({ text: "Some colony counts are negative." }); return res; }
     if (d.some((m) => !(m.dilFrac > 0 && m.dilFrac <= 1))) { res.blocking.push({ text: "Some dilutions are outside (0, 1] once converted from factors." }); return res; }
     if (d.some((m) => !(Number.isFinite(m.volume) && m.volume > 0))) { res.blocking.push({ text: "Some volumes are not a positive number." }); return res; }
@@ -1821,7 +1836,7 @@ const LoadEst = (() => {
       const cls = sp.map((m) => cfuClass(m.cfu, mx));
       const r = { ID: id, ...flies.get(id).meta };
       r.Plates = [...new Set(sp.map((m) => m.plateRaw))].join(", ");
-      r.Spots = sp.length; r.Countable = cls.filter((c) => c === "countable").length;
+      r.Drops = sp.length; r.Countable = cls.filter((c) => c === "countable").length;
       r.Above_ceiling = cls.filter((c) => c === "above the ceiling").length; r.Too_many = cls.filter((c) => c === "too many").length;
       r.Total_CFU = sp.reduce((a, m) => a + (Number.isFinite(m.cfu) ? m.cfu : 0), 0);
       r.LOD_per_fly = homog / sp.reduce((a, m) => a + m.dilFrac * m.volume, 0);
@@ -1833,7 +1848,7 @@ const LoadEst = (() => {
       rows.push(r);
     }
     res.flies = rows;
-    res.columns = ["ID", ...layout.meta, "Plates", "Spots", "Countable", "Above_ceiling", "Too_many", "Total_CFU", "LOD_per_fly", "load", "logload", "se.logload", "sumCFU", "code", "CFU_per_fly", `log${base}_CFU_per_fly`, "se_log", "Status"];
+    res.columns = ["ID", ...layout.meta, "Plates", "Drops", "Countable", "Above_ceiling", "Too_many", "Total_CFU", "LOD_per_fly", "load", "logload", "se.logload", "sumCFU", "code", "CFU_per_fly", `log${base}_CFU_per_fly`, "se_log", "Status"];
     return res;
   }
   // R write.table(quote = TRUE) style, ';' separated
@@ -1933,7 +1948,7 @@ async function saveNow() {
   if (S.view === "setup") renderPlates();
 }
 function freshFromTemplate() {
-  const keep = { fields: S.fields, types: S.types, volume: S.volume, dilMode: S.dilMode, dil: S.dil, rows: S.rows, cols: S.cols, det: S.det, adj: S.adj };
+  const keep = { fields: S.fields, types: S.types, volume: S.volume, dilMode: S.dilMode, dil: S.dil, rows: S.rows, cols: S.cols, det: S.det, adj: S.adj, maskK0: S.grid ? S.grid.maskK : S.maskK0 };
   const st = Object.assign(defaults(), JSON.parse(JSON.stringify(keep)));
   return st;
 }
@@ -2236,7 +2251,7 @@ function ensureGrid() {
   const iw = img.naturalWidth, ih = img.naturalHeight;
   const gw = iw * 0.8, p = gw / Math.max(1, S.cols - 1), gh = p * Math.max(0, S.rows - 1);
   const x0 = iw * 0.1, y0 = Math.max(p * 0.6, Math.min(ih - gh - p * 0.6, iw * 0.1));
-  S.grid = { c: [[x0, y0], [x0 + gw, y0], [x0, y0 + gh], [x0 + gw, y0 + gh]], maskK: 0.46 };
+  S.grid = { c: [[x0, y0], [x0 + gw, y0], [x0, y0 + gh], [x0 + gw, y0 + gh]], maskK: S.maskK0 || 0.46 }; // counting area carried from the previous plate
 }
 function sizeCanvas(stage, cv) {
   const r = stage.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
@@ -3042,7 +3057,7 @@ function renderLoadResults() {
   $("#l-files").innerHTML = L.files.map((f, i) => {
     const info = R.fileInfo[i] || { problems: [] }, n = R.spots.filter((s) => s.source === f.name).length;
     const plates = [...new Set(R.spots.filter((s) => s.source === f.name).map((s) => s.plateRaw))];
-    return `<div class="fileitem"><div style="min-width:0"><b>${esc(f.name)}</b><small>${plates.length ? esc(plates.join(", ")) + " · " : ""}${n} spots · plate from ${esc(info.plateFrom || "?")}</small>${info.problems.length ? `<small class="err">${esc(info.problems.join("; "))}</small>` : ""}</div><button class="x" data-rmfile="${i}" aria-label="Remove ${esc(f.name)}">×</button></div>`;
+    return `<div class="fileitem"><div style="min-width:0"><b>${esc(f.name)}</b><small>${plates.length ? esc(plates.join(", ")) + " · " : ""}${n} drops · plate from ${esc(info.plateFrom || "?")}</small>${info.problems.length ? `<small class="err">${esc(info.problems.join("; "))}</small>` : ""}</div><button class="x" data-rmfile="${i}" aria-label="Remove ${esc(f.name)}">×</button></div>`;
   }).join("");
   // layout info
   const li = $("#l-layout-info");
@@ -3064,12 +3079,12 @@ function renderLoadResults() {
   if (res) {
     res.blocking.forEach((b) => flags.push(["block", b.text]));
     res.warnings.forEach((w) => flags.push([w.kind === "info" ? "info" : "warn", w.text]));
-    if (!res.blocking.length && !res.warnings.length) flags.push(["ok", `${res.nMerged} spots over ${res.nFlies} flies` + (flags.length ? "." : ", nothing flagged.")]);
+    if (!res.blocking.length && !res.warnings.length) flags.push(["ok", `${res.nMerged} drops over ${res.nFlies} flies` + (flags.length ? "." : ", nothing flagged.")]);
     $("#l-dup-row").hidden = !res.tables.twice;
     const T = res.tables;
-    tabs.push(["Plates", T.plates], ["Counts per dilution", T.series], ["Spots left out", T.dropped]);
+    tabs.push(["Plates", T.plates], ["Counts per dilution", T.series], ["Drops left out", T.dropped]);
     if (T.dupWells.length) tabs.push(["Wells holding more than one fly", T.dupWells]);
-    if (T.dupSpots.length) tabs.push(["The same spot recorded twice", T.dupSpots]);
+    if (T.dupSpots.length) tabs.push(["The same drop recorded twice", T.dupSpots]);
     if (T.orphans.length) tabs.push(["Wells with colonies but no fly", T.orphans]);
     if (T.twice) tabs.push(["The same dilution recorded twice for a fly", T.twice]);
   }
@@ -3108,12 +3123,12 @@ function loadSettingsText() {
     " colony type: " + (L.type === "*" ? "all types added together" : L.type),
     " homogenate volume (uL): " + L.homog,
     " ceiling on a readable count: " + (L.mode === "none" ? "none" : L.maxCFU),
-    " spots above it: " + { ignore: "left out, the rest corrected for the ceiling (truncated Poisson)", censor: "kept as counts known to exceed it (censored Poisson)", none: "not applicable" }[L.mode],
+    " drops above it: " + { ignore: "left out, the rest corrected for the ceiling (truncated Poisson)", censor: "kept as counts known to exceed it (censored Poisson)", none: "not applicable" }[L.mode],
     " log base: " + L.logbase,
     " dilution recorded twice for a fly: " + (L.dupAction === "first" ? "first copy only" : "both copies used"),
     "",
     "CHECKS",
-    ...(res ? [...res.blocking.map((b) => " BLOCKING: " + b.text), ...res.warnings.map((w) => " " + w.text), " spots left out:", ...res.tables.dropped.map((d) => `   ${d.Reason}: ${d.Spots}`)] : [" not run"]),
+    ...(res ? [...res.blocking.map((b) => " BLOCKING: " + b.text), ...res.warnings.map((w) => " " + w.text), " drops left out:", ...res.tables.dropped.map((d) => `   ${d.Reason}: ${d.Drops}`)] : [" not run"]),
   ];
   return lines.join("\n") + "\n";
 }
@@ -3166,7 +3181,7 @@ ro.observe($("#g-stage")); ro.observe($("#c-stage")); ro.observe($("#t-stage"));
     if (ld) {
       const stored = JSON.parse(ld);
       LOADST = Object.assign(LOADST, stored);
-      // version 1.0 defaults: ceiling 30, spots above it kept as censored counts (applied once to older settings)
+      // version 1.0 defaults: ceiling 30, drops above it kept as censored counts (applied once to older settings)
       if (stored.defaultsV !== 2) { LOADST.mode = "censor"; LOADST.maxCFU = 30; LOADST.defaultsV = 2; }
     }
     const pl = await DB.get("plates"); PLATES = pl ? JSON.parse(pl) : [];

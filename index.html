@@ -549,8 +549,57 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
 <ul>
 <li><strong>The standard error assumes pure Poisson variation between drops.</strong> Extra variation, from pipetting or clumped bacteria, makes the real uncertainty larger than this standard error.</li>
 <li><strong>Counts at or below the ceiling are taken as exact.</strong> If crowded drops near the ceiling are undercounted, the censored model inherits that error. A lower ceiling limits it.</li>
-<li><strong>The choice of ceiling setting.</strong> In simulations of a 10-dilution series (1, 10, 100, 5, 25, 125, 3, 9, 27, 81; 5 µL drops; ceiling 30), keeping the spots above the ceiling gave estimates as precise or more precise than leaving them out at every load. At high loads, leaving them out produced large overestimates. That is why keeping them is the default.</li>
 </ul>
+<h2>Why spots above the ceiling are kept by default</h2>
+<p>The two ways of handling the ceiling were compared on simulated flies of known load, using the lab's design:</p>
+<ul>
+<li>One fly per row, 10 drops of 5 µL at dilutions 1, 1/10, 1/100, 1/5, 1/25, 1/125, 1/3, 1/9, 1/27 and 1/81.</li>
+<li>A ceiling of 30 and a homogenate of 250 µL.</li>
+<li>Counts drawn from the Poisson model. Drops above 300 colonies were recorded as too many to count.</li>
+<li>2,000 flies at each true load, each estimated both ways.</li>
+</ul>
+<p>The error is the estimated minus the true load, in log10 CFU per fly. The table gives the typical size of the error (root mean square):</p>
+<table>
+<thead>
+<tr>
+<th>True load (CFU per fly)</th>
+<th>Keep them (default)</th>
+<th>Leave them out</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10³</td>
+<td>0.069</td>
+<td>0.072</td>
+</tr>
+<tr>
+<td>10⁴</td>
+<td>0.057</td>
+<td>0.074</td>
+</tr>
+<tr>
+<td>10⁴·⁵</td>
+<td>0.051</td>
+<td>0.060</td>
+</tr>
+<tr>
+<td>10⁵</td>
+<td>0.053</td>
+<td>0.056</td>
+</tr>
+</tbody>
+</table>
+<p>Over this range both settings are unbiased to within about 0.02 log10. Keeping the spots gives errors as small or smaller, because every drop contributes.</p>
+<p><strong>Near the top of the measurable range, the two settings differ sharply.</strong></p>
+<ul>
+<li>At 10⁵·² CFU per fly, about 4 flies in 10 have a single countable drop.</li>
+<li>In a run of 4,000 flies at that load, leaving the spots out gave an estimate more than 10 times too high for 2% of the flies estimated (86 of 3,746), and more than twice too high for 6%. Keeping them never did.</li>
+<li>The reason: when the spots above the ceiling are left out, the one remaining count is treated as a count <em>known to be at most 30</em>. A count of, say, 25 under that condition fits a very high load almost as well as the true one. When the spots are kept, the 25 is an ordinary count, and the drops above the ceiling add that the load is high. Together they pin the load down.</li>
+</ul>
+<p>Above about 10⁵·⁴ CFU per fly, most flies have no countable drop at all. Both settings then report them as <em>Above the dilutions used</em>.</p>
+<p><strong>What keeping them costs.</strong> It takes the counts just below the ceiling at face value. When crowded drops were made to undercount by about 15% at 30 colonies, keeping the spots gave a bias of −0.07 log10 at 10⁴ CFU per fly, against −0.05 for leaving them out. A lower ceiling reduces this.</p>
+<p>The simulation is part of the app's source code (<code>tests/ceiling_simulation.js</code>), so it can be rerun or adapted to another design.</p>
 <h2>The estimator in R</h2>
 <p>The app runs a JavaScript translation of the two R functions below, line by line, including R's root finder and its Poisson probability functions. The translation was checked against this R code, run in R 4.6:</p>
 <ul>
@@ -933,7 +982,7 @@ B;F02;Male;CantonS;24h
 <li><strong>Log base</strong>: log10 or log2. It rescales the results and changes no fit.</li>
 <li><strong>Dilution twice</strong>: shown only when a fly has the same dilution more than once. Choose whether to use both copies or only the first.</li>
 </ul>
-<p><strong>Why spots above the ceiling are kept by default.</strong> The two models were compared on simulated flies of known load, using the lab's design: dilutions 1, 10, 100, 5, 25, 125, 3, 9, 27, 81, 5 µL drops and a ceiling of 30. Keeping the spots gave estimates as precise or more precise at every load. At high loads, where only one spot falls under the ceiling, leaving spots out produced wild overestimates and keeping them did not. The weakness of keeping them is that it trusts counts just below the ceiling, and a ceiling of 30 limits that.</p>
+<p><strong>Why spots above the ceiling are kept by default.</strong> In simulations of the lab's 10-dilution design, keeping them gave errors as small or smaller than leaving them out at every load. Near the top of the measurable range, where a fly often has a single countable drop, leaving them out sometimes gave estimates more than 10 times too high; keeping them did not. The <strong>Method</strong> tab gives the simulation, the numbers and the reason.</p>
 <h3>Checks</h3>
 <p>The app checks the data before estimating anything.</p>
 <ul>

@@ -161,7 +161,7 @@ The file can be separated by semicolons, commas or tabs. When plate names are sp
 - **Log base**: log10 or log2. It rescales the results and changes no fit.
 - **Dilution twice**: shown only when a fly has the same dilution more than once. Choose whether to use both copies or only the first.
 
-**Why spots above the ceiling are kept by default.** The two models were compared on simulated flies of known load, using the lab's design: dilutions 1, 10, 100, 5, 25, 125, 3, 9, 27, 81, 5 µL drops and a ceiling of 30. Keeping the spots gave estimates as precise or more precise at every load. At high loads, where only one spot falls under the ceiling, leaving spots out produced wild overestimates and keeping them did not. The weakness of keeping them is that it trusts counts just below the ceiling, and a ceiling of 30 limits that.
+**Why spots above the ceiling are kept by default.** In simulations of the lab's 10-dilution design, keeping them gave errors as small or smaller than leaving them out at every load. Near the top of the measurable range, where a fly often has a single countable drop, leaving them out sometimes gave estimates more than 10 times too high; keeping them did not. The **Method** tab gives the simulation, the numbers and the reason.
 
 ### Checks
 

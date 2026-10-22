@@ -169,6 +169,8 @@ details.adv[open] summary { margin-bottom: 6px; }
 .stage-overlay { position: absolute; left: 12px; top: 12px; color: var(--stage-ink); font-family: var(--f-mono); font-size: 13px; background: rgba(0,0,0,.55); padding: 4px 8px; border-radius: 4px; pointer-events: none; }
 .stage-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 64px; border-radius: 8px; border: 1px solid rgba(255,255,255,.18); background: rgba(0,0,0,.45); color: #fff; font-size: 26px; cursor: pointer; display: grid; place-items: center; }
 .stage-nav.l { left: 10px; } .stage-nav.r { right: 10px; }
+.peek { position: absolute; left: 12px; bottom: 14px; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.55); color: #fff; font: 600 14px var(--f-body); cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.peek[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .progress { position: absolute; inset: auto 0 0 0; height: 4px; background: rgba(255,255,255,.12); }
 .progress b { display: block; height: 100%; background: var(--accent); width: 0; transition: width .1s; }
 
@@ -189,6 +191,14 @@ pre.preview { background: var(--raised); border: 1px solid var(--line); border-r
 .msg { font-size: 14px; }
 .msg.ok { color: var(--good); } .msg.err { color: var(--bad); } .msg.warn { color: var(--warn); }
 
+/* tune tab */
+.tunestage { overflow: auto; touch-action: auto; }
+.tgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 12px; }
+.tile { position: relative; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; overflow: hidden; background: #000; cursor: pointer; padding: 0; }
+.tile canvas { position: static; display: block; width: 100%; aspect-ratio: 1; max-width: 100%; }
+.tile span { position: absolute; left: 6px; top: 6px; font: 600 12px var(--f-mono); color: #fff; background: rgba(0,0,0,.6); padding: 2px 6px; border-radius: 4px; }
+.tile:focus-visible { outline: 2px solid var(--accent); }
+@media (max-width: 560px) { .tgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* help tab */
 .help { max-width: 74ch; line-height: 1.6; padding-bottom: 40px; }
 .help h1 { font-family: var(--f-display); font-weight: 700; font-size: 30px; margin: 4px 0 8px; text-wrap: balance; }
@@ -204,6 +214,9 @@ pre.preview { background: var(--raised); border: 1px solid var(--line); border-r
 .help th, .help td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
 .help th { background: var(--surface); }
 .help td code { white-space: nowrap; }
+.codebox { margin: 12px 0 20px; }
+.codebox .row { margin-bottom: 6px; }
+.codebox pre { max-height: 420px; overflow: auto; margin: 0; font-size: 12.5px; line-height: 1.45; }
 /* load tab */
 .dt { overflow: auto; max-width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--raised); }
 .dt.tall { max-height: 62vh; }
@@ -235,6 +248,7 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
 @media (max-width: 900px) {
   .split { grid-template-columns: 1fr; grid-template-rows: auto auto; height: auto; min-height: 100%; }
   .stage { height: min(100vw, 70vh); }
+  .tunestage { height: auto; max-height: none; }
   .side { border-left: none; border-top: 1px solid var(--line); overflow: visible; }
   .view.splitview { overflow: auto; }
   .status { margin-left: 0; width: 100%; }
@@ -247,9 +261,11 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
   <nav class="steps" aria-label="Steps">
     <button data-view="setup"><b>1</b>Setup</button>
     <button data-view="grid"><b>2</b>Grid</button>
-    <button data-view="count"><b>3</b>Count</button>
-    <button data-view="export"><b>4</b>Export</button>
-    <button data-view="load"><b>5</b>Load</button>
+    <button data-view="tune"><b>3</b>Tune</button>
+    <button data-view="count"><b>4</b>Count</button>
+    <button data-view="export"><b>5</b>Export</button>
+    <button data-view="load"><b>6</b>Load</button>
+    <button data-view="method">Method</button>
     <button data-view="help">Help</button>
   </nav>
   <div class="status"><span id="st-file">No scan loaded</span><span id="st-save"></span></div>
@@ -296,6 +312,11 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
         <h2>Plate format</h2>
         <div class="col">
           <div class="row"><input type="number" id="nrows" min="1" max="26" style="width:5em" aria-label="Rows"><span>rows ×</span><input type="number" id="ncols" min="1" max="48" style="width:5em" aria-label="Columns"><span>columns</span></div>
+          <div class="col" id="fmt-lock" hidden style="gap:6px">
+            <p class="hint" style="margin:0">Locked: this plate already has counts, and they belong to this format. To change it, clear all the counts of this plate first.</p>
+            <div class="row"><button class="btn small" id="fmt-clear">Clear all counts of this plate</button>
+              <span id="fmt-confirm" hidden><span class="msg warn" style="font-size:13px">Remove every mark and flag on all drops?</span> <button class="btn small primary" id="fmt-yes">Clear</button> <button class="btn small" id="fmt-no">Keep</button></span></div>
+          </div>
           <details class="adv" id="adv">
             <summary>Volume and dilution <span id="adv-sum"></span></summary>
             <p class="hint">Not used for counting. They are written into the Volume and Dilution columns of the COUNTS file so the load-estimation app can read them.</p>
@@ -324,15 +345,51 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
           <div class="row"><button class="btn" id="snap">Snap to wells</button><button class="btn" id="zoom">Zoom to grid</button><button class="btn ghost" id="grid-reset">Reset corners</button></div>
           <div id="snap-msg" class="msg"></div>
         </section>
+        <section class="sep"></section>
+        <section>
+          <button class="btn primary" id="to-tune">Next: tune the detection →</button>
+        </section>
+      </aside>
+    </div>
+  </section>
+
+  <!-- TUNE -->
+  <section class="view splitview" id="v-tune" hidden>
+    <div class="split">
+      <div class="stage tunestage" id="t-stage">
+        <div class="tgrid" id="t-grid"></div>
+        <div class="progress" id="t-prog" hidden><b></b></div>
+      </div>
+      <aside class="side">
+        <section>
+          <h2>Tune the detection</h2>
+          <p class="hint" style="margin:0">These drops were picked across the plate, from empty to crowded. Adjust the settings until the circles match the colonies, then run the detection. Tap a drop to open it in Count.</p>
+          <div class="row"><button class="btn small" id="t-other">Show other drops</button><span class="hint" id="t-status" style="margin:0"></span></div>
+        </section>
+        <section>
+          <div class="row" style="justify-content:space-between"><label class="lbl">Image used by the detection</label><button class="btn small ghost" id="img-reset">Reset</button></div>
+          <label class="lbl" for="img-b">Brightness <span id="img-b-v"></span></label>
+          <input type="range" id="img-b" min="-0.5" max="0.5" step="0.02">
+          <label class="lbl" for="img-c">Contrast <span id="img-c-v"></span></label>
+          <input type="range" id="img-c" min="-0.5" max="1.5" step="0.05">
+          <label class="lbl" for="img-s">Sharpness <span id="img-s-v"></span></label>
+          <input type="range" id="img-s" min="0" max="3" step="0.1">
+        </section>
         <section>
           <label class="lbl" for="maskk">Counting area <span id="maskk-v"></span></label>
           <input type="range" id="maskk" min="0.30" max="0.52" step="0.01">
-          <p class="hint" style="margin:0">Colonies are detected inside these circles. Keep them just inside the well rim.</p>
+          <label class="lbl" for="sens">Sensitivity <span id="sens-v"></span></label>
+          <input type="range" id="sens" min="-1" max="1" step="0.05">
+          <label class="lbl" for="csize">Colony size <span id="csize-v"></span></label>
+          <input type="range" id="csize" min="0.5" max="1.8" step="0.05">
+          <p class="hint" style="margin:0">Saved with this plate; the next plate starts from the same settings.</p>
         </section>
         <section class="sep"></section>
-        <section>
-          <button class="btn primary" id="detect-all">Detect colonies on all drops</button>
-          <button class="btn" id="manual-only">Count by hand, no detection</button>
+        <section class="col">
+          <button class="btn primary" id="detect-all">Detect on all drops</button>
+          <button class="btn" id="t-all" hidden>Detect again on every drop…</button>
+          <div class="row" id="t-all-confirm" hidden><span class="msg warn" style="font-size:13px">This also replaces drops you have checked or corrected.</span><button class="btn small primary" id="t-all-yes">Replace all</button><button class="btn small" id="t-all-no">Cancel</button></div>
+          <button class="btn ghost" id="manual-only">Count by hand, no detection</button>
           <div id="detect-msg" class="msg"></div>
         </section>
       </aside>
@@ -347,6 +404,7 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
         <div class="stage-overlay" id="c-overlay"></div>
         <button class="stage-nav l" id="c-prev" aria-label="Previous drop">‹</button>
         <button class="stage-nav r" id="c-next" aria-label="Next drop">›</button>
+        <button class="peek" id="c-peek" aria-label="Hold to hide the marks">Hold to hide marks</button>
         <div class="progress" id="c-prog" hidden><b></b></div>
       </div>
       <aside class="side">
@@ -365,8 +423,9 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
           <div class="flags">
             <button class="btn" id="f-empty" aria-pressed="false">Empty drop</button>
             <button class="btn" id="f-ign" aria-pressed="false">Ignore drop</button>
-            <button class="btn" id="c-clear">Clear marks</button>
-            <button class="btn" id="c-undo" disabled>Undo</button>
+            <button class="btn" id="c-clear" style="grid-column: span 2">Clear marks</button>
+            <button class="btn" id="c-undo" disabled>↶ Undo</button>
+            <button class="btn" id="c-redo" disabled>↷ Redo</button>
           </div>
         </section>
         <section>
@@ -382,13 +441,24 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
         </section>
         <section class="sep"></section>
         <section>
-          <label class="lbl" for="sens">Detection sensitivity <span id="sens-v"></span></label>
-          <input type="range" id="sens" min="-1" max="1" step="0.05">
-          <label class="lbl" for="csize">Colony size <span id="csize-v"></span></label>
-          <input type="range" id="csize" min="0.5" max="1.8" step="0.05">
-          <div class="row"><span class="hint" style="margin:0">Detect again on</span>
-            <button class="btn small" data-redo="drop">This drop</button><button class="btn small" data-redo="row">Row</button><button class="btn small" data-redo="col">Column</button><button class="btn small" data-redo="plate">Plate</button></div>
-          <p class="hint" style="margin:0">Detecting again replaces the marks on those drops. Undo brings them back.</p>
+          <label class="lbl">Detect again on this drop</label>
+          <label class="lbl" for="d-sens">Sensitivity <span id="d-sens-v"></span></label>
+          <input type="range" id="d-sens" min="-1" max="1" step="0.05">
+          <label class="lbl" for="d-size">Colony size <span id="d-size-v"></span></label>
+          <input type="range" id="d-size" min="0.5" max="1.8" step="0.05">
+          <button class="btn" id="d-redo">Detect again on this drop</button>
+          <p class="hint" style="margin:0">Replaces the marks on this drop only; Undo brings them back. These sliders start from the plate's Tune settings on every drop. Settings for the whole plate are in Tune.</p>
+        </section>
+        <section class="sep"></section>
+        <section>
+          <div class="row" style="justify-content:space-between"><label class="lbl">View</label><button class="btn small ghost" id="v-reset">Reset</button></div>
+          <label class="lbl" for="v-b">Brightness <span id="v-b-v"></span></label>
+          <input type="range" id="v-b" min="-0.5" max="0.5" step="0.02">
+          <label class="lbl" for="v-c">Contrast <span id="v-c-v"></span></label>
+          <input type="range" id="v-c" min="-0.5" max="1.5" step="0.05">
+          <label class="lbl" for="v-s">Sharpness <span id="v-s-v"></span></label>
+          <input type="range" id="v-s" min="0" max="3" step="0.1">
+          <p class="hint" style="margin:0">Changes only what you see here. The image the detection works on is set in Tune.</p>
         </section>
       </aside>
     </div>
@@ -419,19 +489,287 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
     </div>
   </section>
 
+  <!-- METHOD -->
+  <section class="view pad" id="v-method" hidden>
+    <article class="help"><h1>Method</h1>
+<p>This tab describes how the Load step estimates the bacterial load of each fly. It gives the R code that defines the estimator, and an R example that reproduces the app's per-fly table.</p>
+<h2>Model</h2>
+<p>Each fly's homogenate is spotted as drops at several dilutions. For drop <em>i</em> of a fly, let <em>v</em>ᵢ be the volume spotted (µL) and <em>d</em>ᵢ the dilution as a fraction (1 = undiluted, 1/25 = diluted 25-fold).</p>
+<p>The number of colonies <em>y</em>ᵢ in the drop is modelled as <strong>Poisson</strong>, with mean</p>
+<p><em>μ</em>ᵢ = <em>λ</em> · <em>v</em>ᵢ · <em>d</em>ᵢ</p>
+<p>Here <em>λ</em> is the load per µL of homogenate, the one unknown for that fly. Drops are assumed independent.</p>
+<h2>Spots above the ceiling</h2>
+<p>Colonies merge in crowded drops, so counts above a ceiling <em>M</em> (30 by default) are not read as exact. The setting <strong>Spots with more colonies than can be read</strong> decides what such a drop contributes to the likelihood:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>A drop with <em>y</em>ᵢ ≤ <em>M</em> contributes</th>
+<th>A drop above <em>M</em>, or too many to count, contributes</th>
+<th>Model</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Keep them as counts known to exceed the ceiling (<strong>default</strong>)</td>
+<td>P(<em>Y</em> = <em>y</em>ᵢ)</td>
+<td>P(<em>Y</em> &gt; <em>M</em>)</td>
+<td>Censored Poisson</td>
+</tr>
+<tr>
+<td>Leave them out, and correct the rest for the ceiling</td>
+<td>P(<em>Y</em> = <em>y</em>ᵢ) / P(<em>Y</em> ≤ <em>M</em>)</td>
+<td>nothing (left out)</td>
+<td>Right-truncated Poisson</td>
+</tr>
+<tr>
+<td>No ceiling</td>
+<td>P(<em>Y</em> = <em>y</em>ᵢ) for every finite count</td>
+<td>nothing (only drops marked too many)</td>
+<td>Poisson</td>
+</tr>
+</tbody>
+</table>
+<p>Each probability is that of a Poisson variable <em>Y</em> with mean <em>μ</em>ᵢ. In R's function the first two settings are <code>ignoreAboveMaxCFU = FALSE</code> and <code>ignoreAboveMaxCFU = TRUE</code>, with <code>maxCFU</code> = <em>M</em>; the third is <code>maxCFU = NA</code>.</p>
+<h2>Estimate and standard error</h2>
+<ul>
+<li><strong>The estimate.</strong> <em>λ̂</em> maximises the log-likelihood over all the fly's drops. It is found as the root of the score with respect to log <em>λ</em>, using R's <code>uniroot</code> with the interval extended as needed.</li>
+<li><strong>The standard error of log <em>λ̂</em>.</strong> It is 1 / √(−ℓ″), where ℓ″ is the second derivative of the log-likelihood with respect to log <em>λ</em>, taken at the estimate (the observed information). It is reported on the log scale chosen (log10 or log2).</li>
+<li><strong>The load per fly</strong> is <em>λ̂</em> × <em>V</em>, where <em>V</em> is the homogenate volume per fly (250 µL by default).</li>
+<li><strong>The detection limit per fly</strong> is <em>V</em> / Σ <em>v</em>ᵢ <em>d</em>ᵢ, summed over all of that fly's drops. It is the load implied by a single colony over everything plated for that fly. It is not the load at which detection becomes reliable.</li>
+</ul>
+<h2>Status of each fly</h2>
+<ul>
+<li><strong>Detected</strong>: a load was estimated.</li>
+<li><strong>Not detected</strong>: every drop was countable and empty.</li>
+<li><strong>Above the dilutions used</strong>: no drop was countable, so the load is higher than the series can measure.</li>
+<li><strong>Estimation failed</strong>: none of the above applies.</li>
+</ul>
+<h2>Assumptions to keep in mind</h2>
+<ul>
+<li><strong>The standard error assumes pure Poisson variation between drops.</strong> Extra variation, from pipetting or clumped bacteria, makes the real uncertainty larger than this standard error.</li>
+<li><strong>Counts at or below the ceiling are taken as exact.</strong> If crowded drops near the ceiling are undercounted, the censored model inherits that error. A lower ceiling limits it.</li>
+<li><strong>The choice of ceiling setting.</strong> In simulations of a 10-dilution series (1, 10, 100, 5, 25, 125, 3, 9, 27, 81; 5 µL drops; ceiling 30), keeping the spots above the ceiling gave estimates as precise or more precise than leaving them out at every load. At high loads, leaving them out produced large overestimates. That is why keeping them is the default.</li>
+</ul>
+<h2>The estimator in R</h2>
+<p>The app runs a JavaScript translation of the two R functions below, line by line, including R's root finder and its Poisson probability functions. The translation was checked against this R code, run in R 4.6:</p>
+<ul>
+<li>On 1,415 simulated samples under every setting, the two agree to about 10⁻¹² and succeed or fail on the same samples.</li>
+<li>On a 48-fly, 8-plate data set, counts, statuses and detection limits are identical, and the loads agree to 10⁻¹³.</li>
+</ul>
+<div class="codebox"><div class="row"><strong>loadEstimate.R</strong><button class="btn small" data-copy="rfunc">Copy</button><button class="btn small" data-save="rfunc" data-name="loadEstimate.R">Save as .R</button><span class="msg"></span></div><pre><code id="rfunc">loadEstimateOneSample &lt;- function (cfu, dilution, volume, maxCFU, ignoreAboveMaxCFU, logbase = NA)
+{
+    l &lt;- !is.na(cfu)
+    dilution &lt;- dilution[l]
+    cfu &lt;- cfu[l]
+    vdilution &lt;- dilution * volume
+    if (length(cfu) &lt;= 0) {
+        warning(&quot;No CFU counts to work with!&quot;)
+        return(list(logload = NA, se.logload = NA, load = NA,
+            se.load = NA, code = -1, sumCFU = 0, maxCFU = maxCFU,
+            ignoreAboveMaxCFU = ignoreAboveMaxCFU))
+    }
+    if (length(cfu) != length(dilution)) {
+        stop(&quot;cfu and dilution should have the same length&quot;)
+    }
+    if (any(cfu &lt; 0)) {
+        stop(&quot;CFU counts must be positive&quot;)
+    }
+    if (any(dilution &lt;= 0)) {
+        stop(&quot;Dilution factors must be strinctly positive&quot;)
+    }
+    if (any(dilution &gt; 1)) {
+        stop(&quot;Dilution cannot exceed one&quot;)
+    }
+    if (!is.na(maxCFU)) {
+        belowMaxCFU &lt;- cfu &lt;= maxCFU
+        cfu.below &lt;- cfu[belowMaxCFU]
+        vdilution.below &lt;- vdilution[belowMaxCFU]
+        n.below &lt;- length(cfu.below)
+    }
+    else {
+        belowMaxCFU &lt;- is.finite(cfu)
+        cfu.below &lt;- cfu[belowMaxCFU]
+        vdilution.below &lt;- vdilution[belowMaxCFU]
+        n.below &lt;- length(cfu.below)
+    }
+    if (!is.na(maxCFU)) {
+        aboveMaxCFU &lt;- cfu &gt; maxCFU
+        vdilution.above &lt;- vdilution[aboveMaxCFU]
+        n.above &lt;- length(vdilution.above)
+    }
+    else {
+        aboveMaxCFU &lt;- NULL
+        vdilution.above &lt;- NULL
+        n.above &lt;- 0
+    }
+    sum_cfu &lt;- sum(cfu.below)
+    sum_dil &lt;- sum(vdilution.below)
+    sum_cfulogdil &lt;- sum(log(vdilution.below) * cfu.below)
+    sum_logfact &lt;- sum(lgamma(cfu.below + 1))
+    sum_cfulogdil_logfact &lt;- sum_cfulogdil - sum_logfact
+    logload_firstguess &lt;- log(sum_cfu/sum_dil)
+    if (is.infinite(logload_firstguess))
+        logload_firstguess &lt;- 0
+    dlogLik.ignoreAbove &lt;- function(llambd) {
+        lambd &lt;- exp(llambd)
+        dll &lt;- -sum_dil + sum_cfu/lambd
+        if (!is.na(maxCFU)) {
+            for (dd in vdilution.below) {
+                avg &lt;- dd * lambd
+                la &lt;- dpois(maxCFU, lambda = avg, log = TRUE) -
+                  ppois(maxCFU, lambda = avg, lower.tail = TRUE,
+                    log.p = TRUE)
+                dll &lt;- dll + dd * exp(la)
+            }
+        }
+        return(dll)
+    }
+    dlogLik.notIgnoreAbove &lt;- function(llambd) {
+        lambd &lt;- exp(llambd)
+        dll &lt;- -sum_dil + sum_cfu/lambd
+        if (!is.na(maxCFU)) {
+            for (dd in vdilution.above) {
+                avg &lt;- dd * lambd
+                la &lt;- dpois(maxCFU, lambda = avg, log = TRUE) -
+                  ppois(maxCFU, lambda = avg, lower.tail = FALSE,
+                    log.p = TRUE)
+                dll &lt;- dll + dd * exp(la)
+            }
+        }
+        return(dll)
+    }
+    bounds &lt;- logload_firstguess + c(-5, 5)
+    if (ignoreAboveMaxCFU) {
+        opt &lt;- try(uniroot(dlogLik.ignoreAbove, interval = bounds,
+            extendInt = &quot;downX&quot;), silent = TRUE)
+    }
+    else {
+        opt &lt;- try(uniroot(dlogLik.notIgnoreAbove, interval = bounds,
+            extendInt = &quot;downX&quot;), silent = TRUE)
+    }
+    if (&quot;try-error&quot; %in% class(opt) || is.na(opt$estim.prec)) {
+        return(list(logload = NA, se.logload = NA, load = NA,
+            se.load = NA, code = -1, sumCFU = sum_cfu, maxCFU = maxCFU,
+            ignoreAboveMaxCFU = ignoreAboveMaxCFU))
+    }
+    est &lt;- opt$root
+    lambd &lt;- exp(est)
+    lambd2 &lt;- lambd * lambd
+    d2ll &lt;- -sum_cfu/(lambd2)
+    if (!is.na(maxCFU)) {
+        if (ignoreAboveMaxCFU) {
+            for (dd in vdilution.below) {
+                avg &lt;- lambd * dd
+                lF &lt;- ppois(maxCFU, lambda = avg, lower.tail = TRUE,
+                  log.p = TRUE)
+                lf &lt;- dpois(maxCFU, lambda = avg, log = TRUE)
+                f_F &lt;- exp(lf - lF)
+                d2ll &lt;- d2ll + dd * dd * f_F * (f_F - 1 + maxCFU/avg)
+            }
+        }
+        else {
+            for (dd in vdilution.above) {
+                avg &lt;- lambd * dd
+                lF &lt;- ppois(maxCFU, lambda = avg, lower.tail = FALSE,
+                  log.p = TRUE)
+                lf &lt;- dpois(maxCFU, lambda = avg, log = TRUE)
+                f_F &lt;- exp(lf - lF)
+                d2ll &lt;- d2ll - dd * dd * f_F * (f_F + (1 - maxCFU/avg))
+            }
+        }
+    }
+    d2ll &lt;- d2ll * c(lambd2, 1)
+    se &lt;- ifelse(d2ll &lt; 0, 1/sqrt(-d2ll), NA)
+    if (!is.na(logbase) &amp;&amp; logbase &gt; 0) {
+        sc &lt;- log(logbase)
+        est &lt;- est/sc
+        se[1] &lt;- se[1]/sc
+    }
+    return(list(logload = est, se.logload = se[1], load = lambd,
+        se.load = se[2], code = 1, sumCFU = sum_cfu, maxCFU = maxCFU,
+        ignoreAboveMaxCFU = ignoreAboveMaxCFU))
+}
+
+
+loadEstimate &lt;- function(cfu, dilution, volume = 5, sampleID = NULL,
+                         maxCFU = 50, ignoreAboveMaxCFU = TRUE, logbase = NA) {
+  if (is.null(sampleID)) {
+    res &lt;- loadEstimateOneSample(cfu, dilution, volume, maxCFU,
+                                 ignoreAboveMaxCFU, logbase)
+    return(res)
+  }
+  ld &lt;- split(data.frame(CFU = cfu, Dilution = dilution, Volume = volume), sampleID)
+  est &lt;- try(sapply(ld, function(dtmp)
+    with(dtmp, loadEstimateOneSample(CFU, Dilution, Volume, maxCFU,
+                                     ignoreAboveMaxCFU, logbase))))
+  res &lt;- data.frame(sampleID = names(ld),
+                    logload = as.numeric(est[1, ]),
+                    se.logload = as.numeric(est[2, ]),
+                    load = as.numeric(est[3, ]),
+                    se.load = as.numeric(est[4, ]),
+                    code = as.numeric(est[5, ]),
+                    sumCFU = as.numeric(est[6, ]),
+                    maxCFU = as.numeric(est[7, ]),
+                    ignoreAboveMaxCFU = as.numeric(est[8, ]))
+  l &lt;- res$code == -2
+  if (any(l)) {
+    warning(paste(&quot;Could not estimate load for&quot;, sum(l),
+                  &quot;sample(s). Check samples with code=-2!&quot;))
+  }
+  return(res)
+}
+</code></pre></div>
+
+<h2>Reproducing the per-fly table in R</h2>
+<p>With the functions above loaded, this reads a counts file saved by the app and a layout file, and gives the same loads, standard errors and detection limits as the Load step, to about 10⁻¹².</p>
+<div class="codebox"><div class="row"><strong>reproduce_example.R</strong><button class="btn small" data-copy="rexample">Copy</button><button class="btn small" data-save="rexample" data-name="reproduce_example.R">Save as .R</button><span class="msg"></span></div><pre><code id="rexample">## Reproduce the app&#x27;s per-fly loads in R from a COUNTS file and a layout file.
+## Run the two functions above first (loadEstimateOneSample and loadEstimate).
+
+counts &lt;- read.table(&quot;COUNTS_plate01.csv&quot;, header = TRUE, sep = &quot;;&quot;,
+                     check.names = FALSE, stringsAsFactors = FALSE)
+layout &lt;- read.table(&quot;layout.csv&quot;, header = TRUE, sep = &quot;;&quot;,
+                     stringsAsFactors = FALSE)
+
+## A layout by ROW: one fly per row, its dilution series across the columns.
+## (For a layout by WELL, merge with by = &quot;WELL&quot; instead.)
+counts$ROW &lt;- substr(counts$WELL, 1, 1)
+d &lt;- merge(layout, counts, by = &quot;ROW&quot;)
+
+d$CFU      &lt;- as.numeric(d$Prett)                          # &quot;Inf&quot; = too many to count
+d$dilution &lt;- ifelse(d$Dilution &lt;= 1, 1, 1 / d$Dilution)   # factor 25 -&gt; 1/25
+d &lt;- d[!is.na(d$CFU) &amp; !is.na(d$dilution), ]                # ignored or unspotted wells
+
+ceiling_cfu &lt;- 30     # highest count still read reliably
+homogenate  &lt;- 250    # uL per fly
+
+est &lt;- loadEstimate(cfu = d$CFU, dilution = d$dilution, volume = d$Volume,
+                    sampleID = d$ID, maxCFU = ceiling_cfu,
+                    ignoreAboveMaxCFU = FALSE,   # FALSE = censored (the app&#x27;s default)
+                    logbase = 10)
+
+est$CFU_per_fly       &lt;- est$load * homogenate
+est$log10_CFU_per_fly &lt;- log10(est$CFU_per_fly)
+est$LOD_per_fly       &lt;- homogenate / tapply(d$dilution * d$Volume, d$ID, sum)[est$sampleID]
+est
+</code></pre></div></article>
+  </section>
+
   <!-- HELP -->
   <section class="view pad" id="v-help" hidden>
     <article class="help"><h1>CFU Drop Counter</h1>
 <p><strong>Version 1.0</strong>. The version is shown next to the app's name and written into the progress files and the Load settings record.</p>
 <p>CFU Drop Counter counts bacterial colonies (CFU) in drops spotted on a 96-well plate lid filled with agar, and estimates the bacterial load of each fly from those counts. It runs in a web browser on an iPad, a phone or a computer, with nothing to install. Scans and counts are never uploaded. They stay on the device that opens the app.</p>
-<p>The work goes through five steps, shown at the top of the app:</p>
+<p>The work goes through six steps, shown at the top of the app:</p>
 <ol>
 <li><strong>Setup</strong>: load the scan and describe the plate.</li>
 <li><strong>Grid</strong>: place the drop grid on the scan.</li>
-<li><strong>Count</strong>: detect colonies automatically, then check and correct each drop by tapping.</li>
+<li><strong>Tune</strong>: adjust the automatic detection on a sample of drops, then run it on the plate.</li>
+<li><strong>Count</strong>: check and correct each drop by tapping.</li>
 <li><strong>Export</strong>: save the counts as a CSV file.</li>
 <li><strong>Load</strong>: estimate the load per fly from one or several plates and a layout file.</li>
 </ol>
+<p>The <strong>Method</strong> tab explains the statistics and gives the R code of the estimator. <strong>Help</strong> shows this guide.</p>
 <h2>Getting started</h2>
 <ol>
 <li>Open the app's address in Safari on the iPad.</li>
@@ -448,7 +786,7 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
 <li><strong>Replicate</strong> appears next to the plate name in the lists, and goes up by one when you count another plate on the same scan.</li>
 </ul>
 <p><strong>Colony types.</strong> One row per kind of colony to count, each with a colour and an optional keyboard key. The default is a single type, Prett.</p>
-<p><strong>Plate format.</strong> 8 rows × 12 columns for a 96-well lid.</p>
+<p><strong>Plate format.</strong> 8 rows × 12 columns for a 96-well lid. It is locked as soon as the plate has counts, because those counts only make sense in that format. To change it, use <strong>Clear all counts of this plate</strong>, which can be undone on the Count screen.</p>
 <p><strong>Volume and dilution</strong> (folded away, because counting does not use them). The volume per drop and the dilution of each well are written into the counts file, and the Load step uses them.</p>
 <ul>
 <li>The dilution can be one value for the whole plate, one per row, or one per column.</li>
@@ -462,9 +800,19 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
 <li>Tap <strong>Snap to wells</strong>. It fits the grid to the well rims when each circle is already within about a fifth of a well of its place. <strong>Undo</strong> puts the corners back.</li>
 </ol>
 <p>A plate scanned sideways works too: put each marker on the well with that name. For a lid photographed with the dilution series running down the image, A1 is top left, A12 bottom left, H1 top right and H12 bottom right.</p>
-<p><strong>Counting area</strong> sets the size of the circle in which colonies are detected. Keep it just inside the well rim.</p>
-<p><strong>Detect colonies on all drops</strong> runs the automatic detection on every drop and opens the counting screen. <strong>Count by hand</strong> skips detection.</p>
-<h2>3. Count</h2>
+<p><strong>Next: tune the detection</strong> opens the Tune step.</p>
+<h2>3. Tune</h2>
+<p>Tune shows eight drops picked across the plate, from empty to crowded, with the colonies the detection finds in each. Every change of a setting updates them at once, so you can judge a setting on several kinds of drop together. <strong>Show other drops</strong> picks another eight. Tap a drop to open it in Count.</p>
+<ul>
+<li><strong>Image used by the detection</strong>: brightness, contrast and sharpness of the image the detection works on. They help most on dim or low-contrast images. On a sharp, well-lit scan they make little difference.</li>
+<li><strong>Counting area</strong>: the circle in which colonies are detected. Keep it just inside the well rim.</li>
+<li><strong>Sensitivity</strong>: higher finds fainter colonies; lower ignores faint spots.</li>
+<li><strong>Colony size</strong>: the expected size of one colony, which decides how merged colonies are split.</li>
+</ul>
+<p>These settings are saved with the plate, and the next plate starts from the same ones.</p>
+<p><strong>Detect on all drops</strong> runs the detection on the whole plate and opens Count. <strong>Count by hand, no detection</strong> skips it.</p>
+<p><strong>Coming back to Tune later is safe.</strong> Once the plate has counts, the main button becomes <strong>Detect again on the drops not checked yet</strong>: drops you have looked at or corrected are never touched. <strong>Detect again on every drop…</strong> replaces those as well, after a confirmation. Either run can be undone with <strong>Undo</strong> on the Count screen.</p>
+<h2>4. Count</h2>
 <p>The drop fills the screen, with the detected colonies circled.</p>
 <ul>
 <li><strong>Tap an empty spot</strong> to add a colony of the selected type.</li>
@@ -472,18 +820,20 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
 <li><strong>Too many</strong> next to a type means the drop cannot be counted for that type. It is saved as <code>Inf</code>.</li>
 <li><strong>Empty drop</strong> sets the count to 0.</li>
 <li><strong>Ignore drop</strong> leaves the drop out; it is saved as <code>NA</code>.</li>
-<li><strong>Undo</strong> reverses the last change, including a whole re-detection.</li>
+<li><strong>Undo</strong> and <strong>Redo</strong> step back and forward through your changes: added or removed colonies, changed types, the drop flags, Clear marks and re-detections. Each plate keeps its own history of the last 100 steps, even after closing the app. A new change after an undo starts a new branch, so the steps you undid can no longer be redone.</li>
 <li>Move between drops with <strong>Previous / Next</strong>, by swiping left or right on the drop, or with the plate map, where each well shows its count. On the map, shaded wells were detected but not yet looked at, and wells outlined in green were corrected by hand. <strong>Jump to next unchecked drop</strong> finds the next drop you have not looked at.</li>
-<li><strong>Detection sensitivity</strong> and <strong>Colony size</strong> adjust the detection. <strong>Detect again on</strong> reruns it on this drop, its row, its column or the whole plate.</li>
+<li><strong>Hold to hide marks</strong> (bottom left of the drop) shows the drop without any circles for as long as you hold it, so you can check that no colony is hidden under a mark. On a keyboard, hold H.</li>
+<li><strong>Detect again on this drop</strong> reruns the detection on the drop shown, and on no other. Its <strong>Sensitivity</strong> and <strong>Colony size</strong> sliders start from the plate's Tune settings on every drop, so they only rescue a difficult drop. To change the settings for the whole plate, go back to Tune.</li>
+<li><strong>View: Brightness, Contrast and Sharpness</strong> change only what you see on this screen, to check a difficult drop. They do not affect the detection.</li>
 </ul>
 <p>With a keyboard:</p>
 <ul>
 <li>← → or space move between drops, and ↑ ↓ move by a row.</li>
-<li>The type keys select a colony type.</li>
-<li>Cmd/Ctrl + Z undoes.</li>
+<li>The type keys select a colony type, and holding H hides the marks.</li>
+<li>Cmd/Ctrl + Z undoes, and Cmd/Ctrl + Shift + Z (or Ctrl + Y) redoes.</li>
 </ul>
 <p><strong>How well detection works.</strong> On the lab's scans, about 85% of countable drops came within ±2 colonies of a manual count, with a mean error near one colony. Detection misses colonies in crowded drops where they merge, and occasionally splits a large colony in two. It is a starting point, not a count: look at every drop before exporting.</p>
-<h2>4. Export</h2>
+<h2>5. Export</h2>
 <p>The Export screen shows a summary of the plate and a table of counts per drop. Shaded cells were detected but not looked at.</p>
 <p><strong>Save CSV</strong> writes the counts file, named after the scan: <code>COUNTS_&lt;scan name&gt;.csv</code>.</p>
 <ul>
@@ -533,7 +883,7 @@ pre.code { background: var(--raised); border: 1px solid var(--line); border-radi
 </tr>
 </tbody>
 </table>
-<h2>5. Load</h2>
+<h2>6. Load</h2>
 <p>The Load step estimates the bacterial load of each fly from all of that fly's spots, by maximum likelihood. Open it after counting. The layout is only read here, so you stay blind to the treatments while you count.</p>
 <p><strong>Plates.</strong> Tick the plates on this device to include, and add <strong>counts files</strong> for plates counted on another device or earlier. Each plate brings its own volumes and dilutions. That means plates diluted per row, per column or as a whole plate can be combined, so one table can cover a whole experiment.</p>
 <p><strong>Layout.</strong> A file with one row per fly, giving an <strong>ID</strong> and where the fly sits:</p>
@@ -655,13 +1005,9 @@ B;F02;Male;CantonS;24h
 <li><strong>Estimation failed</strong>: none of the above applies.</li>
 </ul>
 <p>The detection limit is the load a single colony implies, not the load at which detection becomes reliable.</p>
-<h3>How the estimate is made</h3>
-<p>Each spot's colony count is modelled as Poisson, with mean equal to the fly's load per µL multiplied by the spot's volume and dilution. The load is the value that maximises the likelihood over all of the fly's spots, with spots above the ceiling handled as described in <em>Settings</em>. The standard error comes from the curvature of the log-likelihood at the estimate.</p>
-<p>This estimator is the lab's <code>loadEstimate()</code> function, originally written in R. The app's version was checked against that R code, run in R 4.6:</p>
-<ul>
-<li>On <strong>1,415 simulated samples</strong> under every ceiling setting, plus edge cases, the two agree to about 10⁻¹² and succeed or fail on the same samples.</li>
-<li>On a <strong>48-fly, 8-plate example</strong>, counts, statuses and detection limits are identical, and the loads agree to 10⁻¹³.</li>
-</ul>
+<h4>How the estimate is made</h4>
+<p>Each spot's colony count is modelled as Poisson, with mean equal to the fly's load per µL multiplied by the spot's volume and dilution. The load is estimated by maximum likelihood over all of the fly's spots. With the default setting, spots above the ceiling make it a censored Poisson model. With <em>Leave them out</em>, it is a right-truncated Poisson model.</p>
+<p>The <strong>Method</strong> tab gives the full description: the likelihood for each setting, the standard error, the detection limit and the assumptions. It also shows the R code of the estimator, the lab's <code>loadEstimate()</code>, which the app runs translated into JavaScript, and an R example that reproduces the per-fly table from a counts file and a layout file. The translation agrees with the R code to about 10⁻¹².</p>
 <h2>Saving and backups</h2>
 <p><strong>Everything is saved automatically</strong>, at every tap, in the browser's storage on the device. This storage is not a file you can see in Files. The app reads it by itself, so when you reopen the app you are back where you stopped.</p>
 <p><strong>A web page cannot write files by itself on an iPad.</strong> Every file it saves needs you to confirm it, goes to Downloads, and cannot be updated or deleted by the app afterwards.</p>
@@ -1472,7 +1818,7 @@ function defaults() {
     volume: 5, dilMode: "plate", dil: { plate: 25, row: [], col: [] }, rows: 8, cols: 12,
     image: null, grid: null, cal: null, det: { sens: 0, size: 1 },
     wells: {}, cur: 0, active: 0, tapMode: "remove", view: "setup", fileName: "",
-    sid: null, imgKey: null,
+    sid: null, imgKey: null, adj: { b: 0, c: 0, s: 0 },
   };
 }
 let S = defaults();
@@ -1481,7 +1827,7 @@ let LOADST = { files: [], layout: null, picked: {}, type: "", mode: "censor", ma
 Object.defineProperty(S, "load", { get: () => LOADST, enumerable: false, configurable: true });
 function setS(st) { S = st; Object.defineProperty(S, "load", { get: () => LOADST, enumerable: false, configurable: true }); }
 let img = null, imgBlob = null, imgURL = null;
-let undoStack = [];
+let undoStack = [], redoStack = [];
 
 function tmplLoad() {
   try {
@@ -1531,14 +1877,14 @@ async function saveNow() {
     let seen = 0; for (let i = 0; i < nWells(); i++) if (S.wells[wellName(i)]?.seen) seen++;
     const m = plateMeta(S.sid);
     if (m) Object.assign(m, { name: plateNameOf(S), rep: repOf(S), scan: S.image ? S.image.name : "", imgKey: S.imgKey, updated: Date.now(), checked: seen, total: nWells(), counting: !!S.grid });
-    ok = (await DB.put("st:" + S.sid, JSON.stringify(S))) && (await DB.put("plates", JSON.stringify(PLATES))) && (await DB.put("current", S.sid));
+    ok = (await DB.put("st:" + S.sid, JSON.stringify(S))) && (await DB.put("hist:" + S.sid, JSON.stringify({ u: undoStack, r: redoStack }))) && (await DB.put("plates", JSON.stringify(PLATES))) && (await DB.put("current", S.sid));
   }
   ok = (await DB.put("load", JSON.stringify(LOADST))) && ok;
   $("#st-save").textContent = ok ? (S.sid ? "Saved on this device" : "") : "Not saved: browser storage unavailable";
   if (S.view === "setup") renderPlates();
 }
 function freshFromTemplate() {
-  const keep = { fields: S.fields, types: S.types, volume: S.volume, dilMode: S.dilMode, dil: S.dil, rows: S.rows, cols: S.cols, det: S.det };
+  const keep = { fields: S.fields, types: S.types, volume: S.volume, dilMode: S.dilMode, dil: S.dil, rows: S.rows, cols: S.cols, det: S.det, adj: S.adj };
   const st = Object.assign(defaults(), JSON.parse(JSON.stringify(keep)));
   return st;
 }
@@ -1550,13 +1896,14 @@ async function registerPlate(blob) {
   await saveNow();
 }
 async function openPlate(id) {
+  tuneSample = null;
   if (S.sid === id) { show(S.grid ? "count" : "setup"); return; }
   await saveNow();
   const raw = await DB.get("st:" + id), m = plateMeta(id);
   if (!raw || !m) { toast("This plate could not be read from storage."); return; }
   const st = Object.assign(defaults(), JSON.parse(raw)); st.sid = id;
   const blob = st.imgKey ? await DB.get("img:" + st.imgKey) : null;
-  setS(st); undoStack = []; img = null; ov = null;
+  setS(st); await loadHistory(id); img = null; ov = null;
   if (blob && st.image) await loadBlob(blob, st.image.name, false);
   else { $("#thumb").hidden = true; $("#scan-info").textContent = "PNG or JPEG. TIFF opens in Safari only."; }
   await DB.put("current", id);
@@ -1566,11 +1913,11 @@ async function openPlate(id) {
 async function deletePlate(id) {
   const m = plateMeta(id); if (!m) return;
   PLATES = PLATES.filter((p) => p.id !== id);
-  await DB.del("st:" + id);
+  await DB.del("st:" + id); await DB.del("hist:" + id);
   if (m.imgKey && !PLATES.some((p) => p.imgKey === m.imgKey)) await DB.del("img:" + m.imgKey);
   delete LOADST.picked[id];
   await DB.put("plates", JSON.stringify(PLATES));
-  if (S.sid === id) { setS(freshFromTemplate()); img = null; ov = null; undoStack = []; $("#thumb").hidden = true; $("#scan-info").textContent = "PNG or JPEG. TIFF opens in Safari only."; await DB.del("current"); show("setup"); }
+  if (S.sid === id) { setS(freshFromTemplate()); img = null; ov = null; undoStack = []; redoStack = []; $("#thumb").hidden = true; $("#scan-info").textContent = "PNG or JPEG. TIFF opens in Safari only."; await DB.del("current"); show("setup"); }
   await saveNow(); renderPlates();
 }
 function ago(t) {
@@ -1603,7 +1950,7 @@ $("#plate-list").addEventListener("click", (e) => {
 });
 $("#new-plate").onclick = async () => {
   await saveNow();
-  setS(freshFromTemplate()); img = null; ov = null; undoStack = [];
+  setS(freshFromTemplate()); img = null; ov = null; undoStack = []; redoStack = [];
   $("#thumb").hidden = true; $("#scan-info").textContent = "PNG or JPEG. TIFF opens in Safari only.";
   await DB.del("current"); show("setup"); toast("Choose the scan for the new plate");
 };
@@ -1665,16 +2012,19 @@ function dilutionFor(i) {
 
 // ---------- views ----------
 function show(v) {
-  if ((v === "grid" || v === "count" || v === "export") && !img) v = "setup";
-  if ((v === "count" || v === "export") && !S.grid) v = "grid";
+  if ((v === "grid" || v === "tune" || v === "count" || v === "export") && !img) v = "setup";
+  if ((v === "tune" || v === "count" || v === "export") && !S.grid) v = "grid";
   S.view = v;
+  if (v === "grid") ensureGrid(); // before the step buttons are refreshed, so Tune and Count are enabled
   for (const s of $$(".view")) s.hidden = s.id !== "v-" + v;
   for (const b of $$(".steps button")) b.setAttribute("aria-current", b.dataset.view === v ? "page" : "false");
   updateSteps();
   if (v === "setup") renderSetup();
   if (v === "grid") { ensureGrid(); requestAnimationFrame(() => { sizeCanvas($("#g-stage"), $("#g-canvas")); drawGrid(); }); renderGridSide(); }
   if (v === "count") { requestAnimationFrame(() => { sizeCanvas($("#c-stage"), $("#c-canvas")); renderCount(); }); }
+  if (v === "tune") renderTune();
   if (v === "export") renderExport();
+  updateHistButtons();
   if (v === "load") { renderLoad(); refreshPlateStates().then(() => { if (S.view === "load") renderLoad(); }); }
   if (v === "setup") renderPlates();
   save();
@@ -1683,7 +2033,7 @@ function updateSteps() {
   const has = !!img;
   for (const b of $$(".steps button")) {
     const v = b.dataset.view;
-    b.disabled = v !== "load" && v !== "help" && ((v !== "setup" && !has) || ((v === "count" || v === "export") && !S.grid));
+    b.disabled = v !== "load" && v !== "help" && v !== "method" && ((v !== "setup" && !has) || ((v === "tune" || v === "count" || v === "export") && !S.grid));
   }
   $("#to-grid").disabled = !has;
   $("#st-file").textContent = S.image ? `${S.image.name} · ${S.image.w}×${S.image.h}` : "No scan loaded";
@@ -1710,6 +2060,9 @@ function renderSetup() {
   $("#vol").value = S.volume;
   $("#adv-sum").textContent = `${S.volume} µL · ${S.dilMode === "plate" ? "dilution " + S.dil.plate : S.dilMode === "row" ? "dilution per row" : "dilution per column"}`;
   $("#nrows").value = S.rows; $("#ncols").value = S.cols;
+  // the plate format is locked once the plate has counts: they only make sense in that format
+  const locked = plateHasCounts();
+  $("#nrows").disabled = locked; $("#ncols").disabled = locked; $("#fmt-lock").hidden = !locked;
   for (const b of $$("#dilmode button")) b.setAttribute("aria-pressed", b.dataset.m === S.dilMode);
   const di = $("#dil-inputs");
   if (S.dilMode === "plate") di.innerHTML = `<div class="row"><label class="lbl" for="dil-p" style="min-width:9em">Dilution factor</label><input type="number" step="any" id="dil-p" value="${esc(S.dil.plate)}"></div>`;
@@ -1727,8 +2080,9 @@ $("#v-setup").addEventListener("input", (e) => {
   else if (el.id === "dil-p") S.dil.plate = el.value;
   else if (el.dataset.dil != null) S.dil[S.dilMode][+el.dataset.dil] = el.value;
   else if (el.id === "nrows" || el.id === "ncols") {
+    if (plateHasCounts()) { renderSetup(); return; }
     const r = Math.max(1, Math.min(26, parseInt($("#nrows").value) || 8)), c = Math.max(1, Math.min(48, parseInt($("#ncols").value) || 12));
-    if (r !== S.rows || c !== S.cols) { S.rows = r; S.cols = c; S.wells = {}; S.cal = null; S.cur = 0; if (S.grid) S.grid = null; }
+    if (r !== S.rows || c !== S.cols) { S.rows = r; S.cols = c; S.wells = {}; invalidateCal(); S.cur = 0; if (S.grid) S.grid = null; }
   } else return;
   tmplSave(); save();
   if (el.id === "vol" || el.id === "dil-p") $("#adv-sum").textContent = `${S.volume} µL · ${S.dilMode === "plate" ? "dilution " + S.dil.plate : S.dilMode === "row" ? "dilution per row" : "dilution per column"}`;
@@ -1742,6 +2096,16 @@ $("#v-setup").addEventListener("click", (e) => {
 });
 $("#add-field").onclick = () => { S.fields.push({ type: "str", name: "Field " + (S.fields.length + 1), value: "" }); renderSetup(); tmplSave(); save(); };
 $("#add-type").onclick = () => { S.types.push({ name: "Type " + (S.types.length + 1), color: "#3b82f6", key: "" }); renderSetup(); tmplSave(); save(); };
+// any mark, flag or checked drop counts as a count
+function plateHasCounts() { return Object.values(S.wells).some((w) => w.m.length || w.empty || w.ign || (w.tm || []).some(Boolean) || w.seen); }
+$("#fmt-clear").onclick = () => { $("#fmt-confirm").hidden = false; };
+$("#fmt-no").onclick = () => { $("#fmt-confirm").hidden = true; };
+$("#fmt-yes").onclick = () => {
+  const all = Object.keys(S.wells).map((k) => { const r = LETTERS.indexOf(k[0]), c = parseInt(k.slice(1), 10) - 1; return r * S.cols + c; }).filter((i) => i >= 0 && i < nWells());
+  if (all.length) pushUndo(snapshot(all)); // one step: Undo on the Count screen brings them back
+  S.wells = {}; S.cur = 0; $("#fmt-confirm").hidden = true;
+  save(); renderSetup(); toast("All counts of this plate cleared. The plate format can be changed now.", 3500);
+};
 function removeType(t) {
   if (S.types.length < 2) return;
   S.types.splice(t, 1);
@@ -1771,7 +2135,7 @@ async function loadBlob(blob, name, fresh) {
     if (hasWork) { await saveNow(); setS(freshFromTemplate()); }
     const oldKey = S.sid && !hasWork ? S.imgKey : null;
     S.image = { name, w: el.naturalWidth, h: el.naturalHeight };
-    S.grid = null; S.cal = null; S.wells = {}; S.cur = 0; undoStack = [];
+    S.grid = null; invalidateCal(); S.wells = {}; S.cur = 0; undoStack = []; redoStack = [];
     if (!S.sid) await registerPlate(blob);
     else { S.imgKey = newId(); await DB.put("img:" + S.imgKey, blob); if (oldKey && !PLATES.some((p) => p.id !== S.sid && p.imgKey === oldKey)) await DB.del("img:" + oldKey); }
     if (hasWork) toast("New plate started. The previous plate is kept in the list.", 3500);
@@ -1890,10 +2254,6 @@ function drawGrid() {
 function cornerNames() { const L = LETTERS[S.rows - 1]; return ["A1", "A" + S.cols, L + "1", L + S.cols]; }
 function renderGridSide() {
   $("#corner-names").textContent = cornerNames().join(", ");
-  $("#maskk").value = S.grid.maskK; $("#maskk-v").textContent = Math.round(S.grid.maskK * 200) + "% of spacing";
-  const any = Object.values(S.wells).some((w) => w.m.length || w.seen);
-  $("#detect-all").textContent = any ? "Detect again on all drops" : "Detect colonies on all drops";
-  $("#manual-only").textContent = any ? "Keep counts, go to counting" : "Count by hand, no detection";
 }
 (() => {
   const cv = $("#g-canvas");
@@ -1911,12 +2271,12 @@ function renderGridSide() {
     S.grid.c[gv.drag] = [Math.max(0, Math.min(img.naturalWidth, (tx - gv.ox) / gv.s)), Math.max(0, Math.min(img.naturalHeight, (ty - gv.oy) / gv.s))];
     drawGrid();
   });
-  const end = () => { if (gv.drag >= 0) { gv.drag = -1; gv.at = null; S.cal = null; $("#snap-msg").textContent = ""; drawGrid(); save(); } };
+  const end = () => { if (gv.drag >= 0) { gv.drag = -1; gv.at = null; invalidateCal(); $("#snap-msg").textContent = ""; drawGrid(); save(); } };
   cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
 })();
-$("#maskk").addEventListener("input", (e) => { S.grid.maskK = +e.target.value; S.cal = null; renderGridSide(); drawGrid(); save(); });
+$("#maskk").addEventListener("input", (e) => { S.grid.maskK = +e.target.value; tuneChanged(true); });
 $("#zoom").onclick = () => { gv.zoom = !gv.zoom; $("#zoom").textContent = gv.zoom ? "Show whole scan" : "Zoom to grid"; drawGrid(); };
-$("#grid-reset").onclick = () => { S.grid = null; ensureGrid(); S.cal = null; drawGrid(); renderGridSide(); save(); };
+$("#grid-reset").onclick = () => { S.grid = null; ensureGrid(); invalidateCal(); drawGrid(); renderGridSide(); save(); };
 
 // Snap: find each well rim (a thin bright ring) near its expected place, then refit the four corners.
 function snapGrid() {
@@ -1967,7 +2327,7 @@ $("#snap").onclick = () => {
   setTimeout(() => {
     const r = snapGrid();
     if (!r.ok) { $("#snap-msg").className = "msg err"; $("#snap-msg").textContent = r.msg; return; }
-    S.grid.c = r.corners; S.cal = null; drawGrid(); save();
+    S.grid.c = r.corners; invalidateCal(); drawGrid(); save();
     if (r.resid > 0.035) { $("#snap-msg").className = "msg warn"; $("#snap-msg").innerHTML = `The rims were hard to find. Check that every circle sits on its well. <button class="btn small" id="snap-undo">Undo snap</button>`; $("#snap-undo").onclick = () => { S.grid.c = before; drawGrid(); save(); $("#snap-msg").textContent = ""; }; }
     else { $("#snap-msg").className = "msg ok"; $("#snap-msg").innerHTML = `Grid fitted to the wells. <button class="btn small ghost" id="snap-undo">Undo</button>`; $("#snap-undo").onclick = () => { S.grid.c = before; drawGrid(); save(); $("#snap-msg").textContent = ""; }; }
   }, 30);
@@ -1982,19 +2342,35 @@ function crop(i, half) {
   if (cropCv.width !== size) { cropCv.width = size; cropCv.height = size; }
   cropCtx.fillStyle = "#000"; cropCtx.fillRect(0, 0, size, size);
   cropCtx.drawImage(img, x0, y0, size, size, 0, 0, size, size);
-  return { rgba: cropCtx.getImageData(0, 0, size, size).data, w: size, h: size, x0, y0, cx, cy };
+  const data = cropCtx.getImageData(0, 0, size, size).data;
+  if (!isPlain(V())) adjustPixels(data, size, size, V());
+  return { rgba: data, w: size, h: size, x0, y0, cx, cy };
 }
 function setProg(id, f) { const p = $(id); if (f == null) { p.hidden = true; return; } p.hidden = false; p.firstElementChild.style.width = (f * 100).toFixed(1) + "%"; }
 const tick = () => new Promise((r) => setTimeout(r, 0));
-async function calibrateNow(progId) {
+// Plate calibration (threshold, colony size) from all drops. A settings change while it runs
+// invalidates it (calVer), so a stale calibration is never kept.
+let calVer = 0, calJob = null;
+function invalidateCal() { S.cal = null; calVer++; }
+async function computeCal(progId) {
   const p = pitch(), half = Math.ceil(p * 0.5) + 2, drops = [];
-  for (let i = 0; i < nWells(); i++) { const c = crop(i, half); drops.push({ rgba: c.rgba, w: c.w, h: c.h, maskR: p * S.grid.maskK }); if (i % 12 === 0) { setProg(progId, (i / nWells()) * 0.3); await tick(); } }
-  S.cal = CFUDetect.calibrate(drops, p);
+  for (let i = 0; i < nWells(); i++) { const c = crop(i, half); drops.push({ rgba: c.rgba, w: c.w, h: c.h, maskR: p * S.grid.maskK }); if (i % 12 === 0) { if (progId) setProg(progId, (i / nWells()) * 0.3); await tick(); } }
+  return CFUDetect.calibrate(drops, p);
 }
-async function detectWells(list, progId) {
-  if (!S.cal) await calibrateNow(progId);
+async function ensureCal(progId) {
+  while (!S.cal) {
+    const v = calVer;
+    if (!calJob || calJob.v !== v) calJob = { v, p: computeCal(progId) };
+    const r = await calJob.p;
+    if (v === calVer) S.cal = r;
+  }
+  return S.cal;
+}
+async function detectWells(list, progId, over) {
+  await ensureCal(progId);
   const p = pitch(), half = Math.ceil(p * 0.5) + 2;
-  const opts = { ...S.cal, r0: S.cal.r0 * S.det.size, a1: S.cal.a1 * S.det.size * S.det.size, sensitivity: S.det.sens };
+  const sens = over ? over.sens : S.det.sens, size = over ? over.size : S.det.size;
+  const opts = { ...S.cal, r0: S.cal.r0 * size, a1: S.cal.a1 * size * size, sensitivity: sens };
   for (let n = 0; n < list.length; n++) {
     const i = list[n], c = crop(i, half);
     const res = CFUDetect.detect({ rgba: c.rgba, w: c.w, h: c.h, maskR: p * S.grid.maskK }, opts);
@@ -2006,35 +2382,61 @@ async function detectWells(list, progId) {
   setProg(progId, null);
 }
 function snapshot(list) { return { list, before: list.map((i) => JSON.stringify(W(i))) }; }
-function pushUndo(u) { undoStack.push(u); if (undoStack.length > 200) undoStack.shift(); $("#c-undo").disabled = false; }
-function undo() {
-  const u = undoStack.pop(); if (!u) return;
+// History: each step stores the JSON of the drops it changed, as they were before. Undo swaps that
+// snapshot with the drops' current state and moves it to the redo list; Redo does the reverse.
+// Kept per plate, with the plate, so it survives closing the app (last HIST_MAX steps).
+const HIST_MAX = 100;
+function pushUndo(u) { undoStack.push(u); if (undoStack.length > HIST_MAX) undoStack.shift(); redoStack = []; updateHistButtons(); }
+function swapHistory(from, to) {
+  const u = from.pop(); if (!u) return;
+  to.push(snapshot(u.list)); if (to.length > HIST_MAX) to.shift();
   u.list.forEach((i, k) => { S.wells[wellName(i)] = JSON.parse(u.before[k]); });
   if (u.list.length === 1) S.cur = u.list[0];
-  $("#c-undo").disabled = !undoStack.length; renderCount(); save();
+  updateHistButtons(); renderCount(); save();
+}
+const undo = () => swapHistory(undoStack, redoStack);
+const redo = () => swapHistory(redoStack, undoStack);
+function updateHistButtons() {
+  const u = $("#c-undo"), r = $("#c-redo"); if (!u) return;
+  u.disabled = !undoStack.length; r.disabled = !redoStack.length;
+  u.title = undoStack.length ? `${undoStack.length} step(s) to undo` : "Nothing to undo";
+  r.title = redoStack.length ? `${redoStack.length} step(s) to redo` : "Nothing to redo";
+}
+async function loadHistory(id) {
+  undoStack = []; redoStack = [];
+  try { const h = await DB.get("hist:" + id); if (h) { const o = JSON.parse(h); undoStack = o.u || []; redoStack = o.r || []; } } catch (e) {}
+  updateHistButtons();
 }
 
 let busy = false;
-$("#detect-all").onclick = async () => {
-  if (busy) return; busy = true;
-  const list = Array.from({ length: nWells() }, (_, i) => i);
-  const hadAny = Object.values(S.wells).some((w) => w.m.length);
-  const u = snapshot(list);
+const allWells = () => Array.from({ length: nWells() }, (_, i) => i);
+const uncheckedWells = () => allWells().filter((i) => { const w = S.wells[wellName(i)]; return !w || !(w.seen || w.edited); });
+async function runDetection(list, label) {
+  if (busy || !list.length) return; busy = true;
+  const u = snapshot(list), hadAny = list.some((i) => { const w = S.wells[wellName(i)]; return w && (w.m.length || w.seen || w.edited || w.empty || w.ign); });
   $("#detect-msg").className = "msg"; $("#detect-msg").textContent = "Detecting colonies…";
   try {
-    S.cal = null; await detectWells(list, "#g-prog");
+    await detectWells(list, "#t-prog");
     if (hadAny) pushUndo(u);
     const total = list.reduce((a, i) => a + W(i).m.length, 0);
     $("#detect-msg").textContent = "";
-    S.cur = 0; show("count"); toast(`Found ${total} colonies on ${nWells()} drops. Check each drop and correct by tapping.`, 4200);
+    S.cur = list[0]; show("count");
+    toast(`${label}: ${total} colonies on ${list.length} drop${list.length > 1 ? "s" : ""}. Check each drop and correct by tapping.`, 4200);
   } catch (e) {
     $("#detect-msg").className = "msg err"; $("#detect-msg").textContent = "Detection failed: " + e.message;
-  } finally { busy = false; setProg("#g-prog", null); }
-};
+  } finally { busy = false; setProg("#t-prog", null); }
+}
+// first run: every drop; later: only drops not yet checked or corrected
+$("#detect-all").onclick = () => (plateHasCounts() ? runDetection(uncheckedWells(), "Detected again") : runDetection(allWells(), "Found"));
+$("#t-all").onclick = () => { $("#t-all-confirm").hidden = false; };
+$("#t-all-no").onclick = () => { $("#t-all-confirm").hidden = true; };
+$("#t-all-yes").onclick = () => { $("#t-all-confirm").hidden = true; runDetection(allWells(), "Detected again on every drop"); };
 $("#manual-only").onclick = () => { show("count"); };
+$("#to-tune").onclick = () => { tuneSample = null; show("tune"); };
 
 // ---------- count view ----------
 let cv2 = { s: 1, half: 0 };
+let dropDet = { at: "", sens: 0, size: 1 };
 function renderCount() {
   if (!S.grid) return;
   const i = S.cur, w = W(i); const wasSeen = w.seen; w.seen = true;
@@ -2053,9 +2455,12 @@ function renderCount() {
   for (const b of $$("#tapmode button")) b.setAttribute("aria-pressed", b.dataset.m === S.tapMode);
   $("#tapmode").parentElement.hidden = S.types.length < 2; if (S.types.length < 2) S.tapMode = "remove";
   $("#f-empty").setAttribute("aria-pressed", !!w.empty); $("#f-ign").setAttribute("aria-pressed", !!w.ign);
-  $("#c-undo").disabled = !undoStack.length;
-  $("#sens").value = S.det.sens; $("#sens-v").textContent = (S.det.sens > 0 ? "+" : "") + S.det.sens.toFixed(2);
-  $("#csize").value = S.det.size; $("#csize-v").textContent = "× " + S.det.size.toFixed(2);
+  updateHistButtons();
+  renderDispControls();
+  // the this-drop sliders start again from the plate's Tune settings on every drop
+  if (dropDet.at !== S.sid + ":" + S.cur) dropDet = { at: S.sid + ":" + S.cur, sens: S.det.sens, size: S.det.size };
+  $("#d-sens").value = dropDet.sens; $("#d-sens-v").textContent = (dropDet.sens > 0 ? "+" : "") + dropDet.sens.toFixed(2);
+  $("#d-size").value = dropDet.size; $("#d-size-v").textContent = "× " + dropDet.size.toFixed(2);
   renderMap();
   save();
 }
@@ -2090,12 +2495,13 @@ function drawDrop() {
   const half = p * 0.58, side = Math.min(w, h), s = side / (2 * half);
   cv2 = { s, half, ox: (w - side) / 2, oy: (h - side) / 2, cx, cy };
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(img, cx - half, cy - half, 2 * half, 2 * half, cv2.ox, cv2.oy, side, side);
+  drawAdjusted(ctx, cx, cy, half, cv2.ox, cv2.oy, side, dpr, DISP);
   const X = (dx) => cv2.ox + side / 2 + dx * s, Y = (dy) => cv2.oy + side / 2 + dy * s;
+  const wl = W(i);
+  if (peeking) { $("#c-overlay").textContent = `${wellName(i)} · marks hidden`; return; }
   // counting area
   ctx.setLineDash([6, 6]); ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(X(0), Y(0), p * S.grid.maskK * s, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-  const wl = W(i);
   const mr = markR();
   for (const m of wl.m) {
     const x = X(m[0]), y = Y(m[1]), col = hexColor(S.types[m[2]]?.color);
@@ -2110,6 +2516,145 @@ function drawDrop() {
   }
   $("#c-overlay").textContent = `${wellName(i)} · ${wl.ign ? "NA" : wl.m.length + " marked"}`;
 }
+// ---------- view adjustments (display only) ----------
+const V = () => (S.adj ||= { b: 0, c: 0, s: 0 });
+// view-only settings for the Count screen, kept on this device
+let DISP = { b: 0, c: 0, s: 0 };
+try { const d = JSON.parse(localStorage.getItem("cfu.view") || "null"); if (d) DISP = Object.assign(DISP, d); } catch (e) {}
+const viewCv = document.createElement("canvas"), viewCtx = viewCv.getContext("2d", { willReadFrequently: true });
+let viewCache = { key: "", ok: false };
+function boxBlur(src, w, h, r, st) {
+  // separable box blur of the three colour channels; st = values per pixel in src (4 for RGBA, 3 for RGB)
+  const tmp = new Float32Array(w * h * 3), out = new Float32Array(w * h * 3), n = 2 * r + 1;
+  for (let y = 0; y < h; y++) for (let ch = 0; ch < 3; ch++) {
+    const row = y * w; let acc = 0;
+    for (let k = -r; k <= r; k++) acc += src[(row + Math.min(w - 1, Math.max(0, k))) * st + ch];
+    for (let x = 0; x < w; x++) { tmp[(row + x) * 3 + ch] = acc / n; acc += src[(row + Math.min(w - 1, x + r + 1)) * st + ch] - src[(row + Math.max(0, x - r)) * st + ch]; }
+  }
+  for (let x = 0; x < w; x++) for (let ch = 0; ch < 3; ch++) {
+    let acc = 0;
+    for (let k = -r; k <= r; k++) acc += tmp[(Math.min(h - 1, Math.max(0, k)) * w + x) * 3 + ch];
+    for (let y = 0; y < h; y++) { out[(y * w + x) * 3 + ch] = acc / n; acc += tmp[(Math.min(h - 1, y + r + 1) * w + x) * 3 + ch] - tmp[(Math.max(0, y - r) * w + x) * 3 + ch]; }
+  }
+  return out;
+}
+// brightness, contrast and sharpness on an RGBA buffer, in place (sharpen first, then contrast and brightness)
+function adjustPixels(d, w, h, v) {
+  if (v.s > 0) {
+    const bl = boxBlur(boxBlur(d, w, h, 1, 4), w, h, 1, 3); // two box passes ≈ a small Gaussian
+    for (let i = 0, j = 0; i < d.length; i += 4, j += 3) for (let ch = 0; ch < 3; ch++) d[i + ch] = d[i + ch] + v.s * (d[i + ch] - bl[j + ch]);
+  }
+  if (v.b || v.c) { const c = 1 + v.c, b = v.b * 255; for (let i = 0; i < d.length; i += 4) { d[i] = (d[i] - 128) * c + 128 + b; d[i + 1] = (d[i + 1] - 128) * c + 128 + b; d[i + 2] = (d[i + 2] - 128) * c + 128 + b; } }
+}
+const isPlain = (v) => !v.b && !v.c && !v.s;
+function drawAdjusted(ctx, cx, cy, half, ox, oy, side, dpr, v) {
+  if (isPlain(v)) { ctx.drawImage(img, cx - half, cy - half, 2 * half, 2 * half, ox, oy, side, side); return; }
+  // work at the scan's own resolution (enlarging adds no detail), as detection does
+  const px = Math.max(16, Math.round(2 * half)), key = [S.sid, S.cur, cx, cy, half, px, v.b, v.c, v.s].join("|");
+  if (viewCache.key !== key) {
+    try {
+      viewCv.width = px; viewCv.height = px;
+      viewCtx.drawImage(img, cx - half, cy - half, 2 * half, 2 * half, 0, 0, px, px);
+      const id = viewCtx.getImageData(0, 0, px, px);
+      adjustPixels(id.data, px, px, v);
+      viewCtx.putImageData(id, 0, 0);
+      viewCache = { key, ok: true };
+    } catch (e) { viewCache = { key, ok: false }; }
+  }
+  if (viewCache.ok) { ctx.imageSmoothingQuality = "high"; ctx.drawImage(viewCv, 0, 0, px, px, ox, oy, side, side); }
+  else ctx.drawImage(img, cx - half, cy - half, 2 * half, 2 * half, ox, oy, side, side);
+}
+const pct = (v) => (v > 0 ? "+" : "") + Math.round(v * 100) + "%";
+function renderTuneControls() {
+  const v = V();
+  $("#img-b").value = v.b; $("#img-c").value = v.c; $("#img-s").value = v.s;
+  $("#img-b-v").textContent = pct(v.b); $("#img-c-v").textContent = pct(v.c); $("#img-s-v").textContent = v.s ? "× " + v.s.toFixed(1) : "off";
+  $("#maskk").value = S.grid ? S.grid.maskK : 0.46; $("#maskk-v").textContent = S.grid ? Math.round(S.grid.maskK * 200) + "% of spacing" : "";
+  $("#sens").value = S.det.sens; $("#sens-v").textContent = (S.det.sens > 0 ? "+" : "") + S.det.sens.toFixed(2);
+  $("#csize").value = S.det.size; $("#csize-v").textContent = "× " + S.det.size.toFixed(2);
+}
+function renderDispControls() {
+  $("#v-b").value = DISP.b; $("#v-c").value = DISP.c; $("#v-s").value = DISP.s;
+  $("#v-b-v").textContent = pct(DISP.b); $("#v-c-v").textContent = pct(DISP.c); $("#v-s-v").textContent = DISP.s ? "× " + DISP.s.toFixed(1) : "off";
+}
+for (const [id, k] of [["#img-b", "b"], ["#img-c", "c"], ["#img-s", "s"]]) $(id).addEventListener("input", (e) => { V()[k] = +e.target.value; tuneChanged(true); });
+$("#img-reset").onclick = () => { S.adj = { b: 0, c: 0, s: 0 }; tuneChanged(true); };
+$("#sens").addEventListener("input", (e) => { S.det.sens = +e.target.value; tuneChanged(false); });
+$("#csize").addEventListener("input", (e) => { S.det.size = +e.target.value; tuneChanged(false); });
+const saveDisp = () => { try { localStorage.setItem("cfu.view", JSON.stringify(DISP)); } catch (e) {} };
+for (const [id, k] of [["#v-b", "b"], ["#v-c", "c"], ["#v-s", "s"]]) $(id).addEventListener("input", (e) => { DISP[k] = +e.target.value; saveDisp(); renderDispControls(); drawDrop(); });
+$("#v-reset").onclick = () => { DISP = { b: 0, c: 0, s: 0 }; saveDisp(); renderDispControls(); drawDrop(); };
+
+// ---------- tune: live preview on sample drops ----------
+let tuneSample = null, tuneRound = 0, tuneTimer = null;
+const tileCv = document.createElement("canvas"), tileCtx = tileCv.getContext("2d");
+// image, counting area: the calibration changes; sensitivity, size: only the preview
+function tuneChanged(recal) {
+  if (recal) invalidateCal();
+  renderTuneControls(); save();
+  clearTimeout(tuneTimer); tuneTimer = setTimeout(previewTune, recal ? 300 : 60);
+}
+async function pickSample() {
+  // spread the sample over the plate by how much of each drop is covered by colonies
+  const cal = await ensureCal("#t-prog"), p = pitch(), half = Math.ceil(p * 0.5) + 2, r = p * S.grid.maskK;
+  const cov = [];
+  for (let i = 0; i < nWells(); i++) {
+    const c = crop(i, half), cx0 = (c.w - 1) / 2; let n = 0, m = 0;
+    for (let y = 0; y < c.h; y += 2) for (let x = 0; x < c.w; x += 2) {
+      if ((x - cx0) ** 2 + (y - cx0) ** 2 > r * r) continue; m++;
+      const j = (y * c.w + x) * 4; if (0.4 * c.rgba[j] + 0.45 * c.rgba[j + 1] + 0.15 * c.rgba[j + 2] >= cal.threshold) n++;
+    }
+    cov.push([i, m ? n / m : 0]);
+    if (i % 24 === 0) await tick();
+  }
+  cov.sort((a, b) => a[1] - b[1]);
+  const qs = [0.02, 0.16, 0.3, 0.44, 0.58, 0.72, 0.86, 0.97].map((q) => Math.min(0.995, (q + tuneRound * 0.037) % 1));
+  const pick = []; for (const q of qs) { let k = Math.floor(q * (cov.length - 1)); while (pick.includes(cov[k][0]) && k < cov.length - 1) k++; if (!pick.includes(cov[k][0])) pick.push(cov[k][0]); }
+  tuneSample = pick.sort((a, b) => a - b);
+}
+async function renderTune() {
+  renderTuneControls();
+  const fresh = !plateHasCounts(), un = uncheckedWells().length;
+  $("#detect-all").textContent = fresh ? "Detect on all drops" : `Detect again on the ${un} drop${un === 1 ? "" : "s"} not checked yet`;
+  $("#detect-all").disabled = !fresh && un === 0;
+  $("#t-all").hidden = fresh; $("#t-all-confirm").hidden = true;
+  $("#t-status").textContent = fresh ? "" : "Drops you have checked or corrected are kept.";
+  if (!tuneSample || tuneSample.some((i) => i >= nWells())) await pickSample();
+  previewTune();
+}
+$("#t-other").onclick = async () => { tuneRound++; await pickSample(); previewTune(); };
+let previewing = false, previewAgain = false;
+async function previewTune() {
+  if (S.view !== "tune" || !S.grid || !img) return;
+  if (previewing) { previewAgain = true; return; }
+  previewing = true;
+  try {
+    do {
+      previewAgain = false;
+      if (!tuneSample) await pickSample();
+      const cal = await ensureCal("#t-prog"), p = pitch(), half = Math.ceil(p * 0.5) + 2;
+      const opts = { ...cal, r0: cal.r0 * S.det.size, a1: cal.a1 * S.det.size * S.det.size, sensitivity: S.det.sens };
+      const grid = $("#t-grid");
+      if (grid.children.length !== tuneSample.length || [...grid.children].some((t, k) => +t.dataset.i !== tuneSample[k]))
+        grid.innerHTML = tuneSample.map((i) => `<button class="tile" data-i="${i}" aria-label="Open ${wellName(i)} in Count"><canvas></canvas><span></span></button>`).join("");
+      for (const t of grid.children) {
+        const i = +t.dataset.i, c = crop(i, half);
+        const res = CFUDetect.detect({ rgba: c.rgba, w: c.w, h: c.h, maskR: p * S.grid.maskK }, opts);
+        const cv = t.querySelector("canvas"), dpr = window.devicePixelRatio || 1, sz = Math.max(60, Math.round(cv.clientWidth * dpr));
+        cv.width = sz; cv.height = sz;
+        tileCv.width = c.w; tileCv.height = c.h; tileCtx.putImageData(new ImageData(c.rgba, c.w, c.h), 0, 0);
+        const g = cv.getContext("2d"), k = sz / c.w; g.imageSmoothingQuality = "high"; g.drawImage(tileCv, 0, 0, sz, sz);
+        g.setLineDash([5 * dpr, 5 * dpr]); g.strokeStyle = "rgba(255,255,255,.4)"; g.lineWidth = 1.2 * dpr; g.beginPath(); g.arc(sz / 2, sz / 2, p * S.grid.maskK * k, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
+        const mr = Math.max(4 * dpr, opts.r0 * k * 0.5);
+        for (const q of res.points) { g.lineWidth = 3 * dpr; g.strokeStyle = "rgba(0,0,0,.6)"; g.beginPath(); g.arc(q.x * k, q.y * k, mr, 0, Math.PI * 2); g.stroke(); g.lineWidth = 1.8 * dpr; g.strokeStyle = hexColor(S.types[0] && S.types[0].color); g.beginPath(); g.arc(q.x * k, q.y * k, mr, 0, Math.PI * 2); g.stroke(); }
+        const w = S.wells[wellName(i)];
+        t.querySelector("span").textContent = `${wellName(i)} · ${res.points.length}` + (w && (w.seen || w.edited) ? ` (counted ${w.ign ? "NA" : w.m.length})` : "");
+        await tick();
+      }
+    } while (previewAgain);
+  } finally { previewing = false; setProg("#t-prog", null); }
+}
+$("#t-grid").addEventListener("click", (e) => { const t = e.target.closest(".tile"); if (t) { S.cur = +t.dataset.i; show("count"); } });
 function markR() { const r0 = S.cal ? S.cal.r0 * S.det.size : pitch() * 0.08; return Math.max(7, Math.min(r0 * cv2.s * 0.5, 34)); }
 
 function go(i) { if (i < 0 || i >= nWells()) return; S.cur = i; renderCount(); }
@@ -2131,16 +2676,15 @@ $("#f-empty").onclick = () => { const w = W(S.cur); pushUndo(snapshot([S.cur]));
 $("#f-ign").onclick = () => { const w = W(S.cur); pushUndo(snapshot([S.cur])); w.ign = !w.ign; if (w.ign) w.empty = false; w.edited = true; renderCount(); };
 $("#c-clear").onclick = () => { const w = W(S.cur); if (!w.m.length) return; pushUndo(snapshot([S.cur])); w.m = []; w.edited = true; renderCount(); };
 $("#c-undo").onclick = undo;
-$("#sens").addEventListener("input", (e) => { S.det.sens = +e.target.value; $("#sens-v").textContent = (S.det.sens > 0 ? "+" : "") + S.det.sens.toFixed(2); save(); });
-$("#csize").addEventListener("input", (e) => { S.det.size = +e.target.value; $("#csize-v").textContent = "× " + S.det.size.toFixed(2); drawDrop(); save(); });
-$$("[data-redo]").forEach((b) => b.addEventListener("click", async () => {
+$("#c-redo").onclick = redo;
+$("#d-sens").addEventListener("input", (e) => { dropDet.sens = +e.target.value; $("#d-sens-v").textContent = (dropDet.sens > 0 ? "+" : "") + dropDet.sens.toFixed(2); });
+$("#d-size").addEventListener("input", (e) => { dropDet.size = +e.target.value; $("#d-size-v").textContent = "× " + dropDet.size.toFixed(2); });
+$("#d-redo").onclick = async () => {
   if (busy) return; busy = true;
-  const r = Math.floor(S.cur / S.cols), k = S.cur % S.cols, all = Array.from({ length: nWells() }, (_, i) => i);
-  const list = { drop: [S.cur], row: all.filter((i) => Math.floor(i / S.cols) === r), col: all.filter((i) => i % S.cols === k), plate: all }[b.dataset.redo];
-  const u = snapshot(list);
-  try { await detectWells(list, "#c-prog"); pushUndo(u); W(S.cur).seen = true; renderCount(); toast(`Detected again on ${list.length === 1 ? wellName(S.cur) : list.length + " drops"}`); }
+  const u = snapshot([S.cur]);
+  try { await detectWells([S.cur], "#c-prog", { sens: dropDet.sens, size: dropDet.size }); pushUndo(u); W(S.cur).seen = true; renderCount(); toast(`Detected again on ${wellName(S.cur)}`); }
   finally { busy = false; }
-}));
+};
 
 // taps on the drop
 (() => {
@@ -2156,7 +2700,19 @@ $$("[data-redo]").forEach((b) => b.addEventListener("click", async () => {
   });
   cv.addEventListener("pointercancel", () => (down = null));
 })();
+// hold the button (or the H key) to see the drop without marks
+let peeking = false;
+function setPeek(on) { if (peeking === on) return; peeking = on; $("#c-peek").setAttribute("aria-pressed", on); $("#c-peek").textContent = on ? "Marks hidden" : "Hold to hide marks"; drawDrop(); }
+(() => {
+  const b = $("#c-peek");
+  b.addEventListener("pointerdown", (e) => { e.preventDefault(); b.setPointerCapture(e.pointerId); setPeek(true); });
+  for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) b.addEventListener(ev, () => setPeek(false));
+  b.addEventListener("contextmenu", (e) => e.preventDefault());
+  document.addEventListener("keyup", (e) => { if (e.key === "h" || e.key === "H") setPeek(false); });
+  window.addEventListener("blur", () => setPeek(false));
+})();
 function tapAt(x, y) {
+  if (peeking) return;
   const w = W(S.cur); if (w.ign) return;
   const side = Math.min(cv2.half * 2 * cv2.s, 1e9);
   const ix = (x - cv2.ox - side / 2) / cv2.s, iy = (y - cv2.oy - side / 2) / cv2.s;
@@ -2164,17 +2720,20 @@ function tapAt(x, y) {
   const hit = Math.max(18, markR() * 1.3) / cv2.s;
   let best = -1, bd = hit;
   w.m.forEach((m, k) => { const d = Math.hypot(m[0] - ix, m[1] - iy); if (d < bd) { bd = d; best = k; } });
+  if (best >= 0 && S.tapMode === "retype" && w.m[best][2] === S.active) return; // already that type: nothing changes
   pushUndo(snapshot([S.cur]));
   if (best >= 0) {
-    if (S.tapMode === "retype") { if (w.m[best][2] === S.active) { undoStack.pop(); return; } w.m[best][2] = S.active; }
+    if (S.tapMode === "retype") w.m[best][2] = S.active;
     else w.m.splice(best, 1);
   } else { w.m.push([+ix.toFixed(1), +iy.toFixed(1), S.active]); w.empty = false; w.tm[S.active] = false; }
   w.edited = true; renderCount();
 }
 document.addEventListener("keydown", (e) => {
   if (S.view !== "count" || e.target.closest("input, select, textarea")) return;
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") { e.preventDefault(); return undo(); }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") { e.preventDefault(); return e.shiftKey ? redo() : undo(); }
+  if (e.ctrlKey && e.key.toLowerCase() === "y") { e.preventDefault(); return redo(); }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === "h" || e.key === "H") { e.preventDefault(); setPeek(true); return; }
   if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); next(1); }
   else if (e.key === "ArrowLeft") { e.preventDefault(); next(-1); }
   else if (e.key === "ArrowDown") { e.preventDefault(); next(S.cols); }
@@ -2265,7 +2824,7 @@ function markSaved(kind) { const m = plateMeta(S.sid); if (m) { m[kind] = Date.n
 $("#x-save").onclick = async () => { if (await saveFile(fileName(), buildCSV(), "text/csv", $("#x-msg"), " Use Copy CSV text instead.")) markSaved("csv"); };
 
 // ---------- progress files ----------
-const PROG_KEYS = ["fields", "types", "volume", "dilMode", "dil", "rows", "cols", "grid", "cal", "det", "wells", "cur", "active", "fileName"];
+const PROG_KEYS = ["fields", "types", "volume", "dilMode", "dil", "rows", "cols", "grid", "cal", "det", "adj", "wells", "cur", "active", "fileName"];
 function progressName() { return fileName().replace(/^COUNTS_/i, "PROGRESS_").replace(/\.csv$/i, ".json"); }
 function buildProgress() {
   const st = {}; for (const k of PROG_KEYS) st[k] = S[k];
@@ -2289,7 +2848,7 @@ async function applyProgress(p) {
     PLATES.unshift({ id: S.sid, name: "", scan: image.name, imgKey, created: Date.now(), updated: Date.now(), checked: 0, total: 0, backup: p.savedAt ? Date.parse(p.savedAt) : null, csv: null });
   }
   for (const k of PROG_KEYS) if (st[k] !== undefined) S[k] = st[k];
-  S.wells = S.wells || {}; S.cur = Math.min(S.cur || 0, nWells() - 1); undoStack = [];
+  S.wells = S.wells || {}; S.cur = Math.min(S.cur || 0, nWells() - 1); undoStack = []; redoStack = [];
   const m = plateMeta(S.sid); if (m && !m.backup && p.savedAt) m.backup = Date.parse(p.savedAt);
   pendingProgress = null; progInfo("");
   tmplSave(); await saveNow();
@@ -2331,7 +2890,7 @@ $("#x-nextplate").onclick = async () => {
   if (rep && /^\d+$/.test(rep.value)) rep.value = String(+rep.value + 1);
   S.sid = newId();
   PLATES.unshift({ id: S.sid, name: plateNameOf(S), scan: image ? image.name : "", imgKey, created: Date.now(), updated: Date.now(), checked: 0, total: nWells(), backup: null, csv: null });
-  undoStack = []; tmplSave(); await saveNow(); show("grid");
+  undoStack = []; redoStack = []; tmplSave(); await saveNow(); show("grid");
   toast((rep ? `Replicate set to ${rep.value}. ` : "") + "Move the grid onto the next plate. The previous plate is kept in the list.", 4000);
 };
 $("#x-newscan").onclick = () => $("#new-plate").click();
@@ -2527,12 +3086,27 @@ const today = () => new Date().toISOString().slice(0, 10);
 $("#l-save").onclick = () => { const res = loadRes && loadRes.res; if (!res || !res.flies) return; saveFile(`load_per_fly_${today()}.csv`, LoadEst.toCSV(res.flies, res.columns), "text/csv", $("#l-msg")); };
 $("#l-save-set").onclick = () => saveFile(`load_per_fly_settings_${today()}.txt`, loadSettingsText(), "text/plain", $("#l-msg"));
 
+// ---------- method tab: copy or save the R code ----------
+$("#v-method").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-copy],[data-save]"); if (!b) return;
+  const id = b.dataset.copy || b.dataset.save, code = document.getElementById(id), text = code.textContent;
+  const msg = b.parentElement.querySelector(".msg");
+  if (b.dataset.copy) {
+    try { await navigator.clipboard.writeText(text); msg.className = "msg ok"; msg.textContent = "Copied"; }
+    catch (err) { const r = document.createRange(); r.selectNodeContents(code); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); msg.className = "msg warn"; msg.textContent = "Copy was blocked: the code is selected, copy it from there."; }
+  } else {
+    const base = b.dataset.name;
+    saveFile(downloads ? base.replace(/\.R$/, "_R.txt") : base, text, "text/plain", msg);
+  }
+});
+
 // ---------- resize ----------
 const ro = new ResizeObserver(() => {
   if (S.view === "grid") { sizeCanvas($("#g-stage"), $("#g-canvas")); drawGrid(); }
   if (S.view === "count") { sizeCanvas($("#c-stage"), $("#c-canvas")); drawDrop(); }
+  if (S.view === "tune") { clearTimeout(tuneTimer); tuneTimer = setTimeout(previewTune, 150); }
 });
-ro.observe($("#g-stage")); ro.observe($("#c-stage"));
+ro.observe($("#g-stage")); ro.observe($("#c-stage")); ro.observe($("#t-stage"));
 
 // ---------- boot ----------
 (async () => {
@@ -2567,7 +3141,7 @@ ro.observe($("#g-stage")); ro.observe($("#c-stage"));
       if (raw) {
         const st = Object.assign(defaults(), JSON.parse(raw)); st.sid = cur; delete st.load;
         const blob = st.imgKey ? await DB.get("img:" + st.imgKey) : null;
-        setS(st);
+        setS(st); await loadHistory(cur);
         if (blob && st.image && (await loadBlob(blob, st.image.name, false))) resumed = true;
       }
     }

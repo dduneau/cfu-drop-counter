@@ -4,13 +4,16 @@
 
 CFU Drop Counter counts bacterial colonies (CFU) in drops spotted on a 96-well plate lid filled with agar, and estimates the bacterial load of each fly from those counts. It runs in a web browser on an iPad, a phone or a computer, with nothing to install. Scans and counts are never uploaded. They stay on the device that opens the app.
 
-The work goes through five steps, shown at the top of the app:
+The work goes through six steps, shown at the top of the app:
 
 1. **Setup**: load the scan and describe the plate.
 2. **Grid**: place the drop grid on the scan.
-3. **Count**: detect colonies automatically, then check and correct each drop by tapping.
-4. **Export**: save the counts as a CSV file.
-5. **Load**: estimate the load per fly from one or several plates and a layout file.
+3. **Tune**: adjust the automatic detection on a sample of drops, then run it on the plate.
+4. **Count**: check and correct each drop by tapping.
+5. **Export**: save the counts as a CSV file.
+6. **Load**: estimate the load per fly from one or several plates and a layout file.
+
+The **Method** tab explains the statistics and gives the R code of the estimator. **Help** shows this guide.
 
 ## Getting started
 
@@ -33,7 +36,7 @@ The work goes through five steps, shown at the top of the app:
 
 **Colony types.** One row per kind of colony to count, each with a colour and an optional keyboard key. The default is a single type, Prett.
 
-**Plate format.** 8 rows × 12 columns for a 96-well lid.
+**Plate format.** 8 rows × 12 columns for a 96-well lid. It is locked as soon as the plate has counts, because those counts only make sense in that format. To change it, use **Clear all counts of this plate**, which can be undone on the Count screen.
 
 **Volume and dilution** (folded away, because counting does not use them). The volume per drop and the dilution of each well are written into the counts file, and the Load step uses them.
 
@@ -50,11 +53,24 @@ The app remembers these settings for the next plate.
 
 A plate scanned sideways works too: put each marker on the well with that name. For a lid photographed with the dilution series running down the image, A1 is top left, A12 bottom left, H1 top right and H12 bottom right.
 
-**Counting area** sets the size of the circle in which colonies are detected. Keep it just inside the well rim.
+**Next: tune the detection** opens the Tune step.
 
-**Detect colonies on all drops** runs the automatic detection on every drop and opens the counting screen. **Count by hand** skips detection.
+## 3. Tune
 
-## 3. Count
+Tune shows eight drops picked across the plate, from empty to crowded, with the colonies the detection finds in each. Every change of a setting updates them at once, so you can judge a setting on several kinds of drop together. **Show other drops** picks another eight. Tap a drop to open it in Count.
+
+- **Image used by the detection**: brightness, contrast and sharpness of the image the detection works on. They help most on dim or low-contrast images. On a sharp, well-lit scan they make little difference.
+- **Counting area**: the circle in which colonies are detected. Keep it just inside the well rim.
+- **Sensitivity**: higher finds fainter colonies; lower ignores faint spots.
+- **Colony size**: the expected size of one colony, which decides how merged colonies are split.
+
+These settings are saved with the plate, and the next plate starts from the same ones.
+
+**Detect on all drops** runs the detection on the whole plate and opens Count. **Count by hand, no detection** skips it.
+
+**Coming back to Tune later is safe.** Once the plate has counts, the main button becomes **Detect again on the drops not checked yet**: drops you have looked at or corrected are never touched. **Detect again on every drop…** replaces those as well, after a confirmation. Either run can be undone with **Undo** on the Count screen.
+
+## 4. Count
 
 The drop fills the screen, with the detected colonies circled.
 
@@ -63,19 +79,21 @@ The drop fills the screen, with the detected colonies circled.
 - **Too many** next to a type means the drop cannot be counted for that type. It is saved as `Inf`.
 - **Empty drop** sets the count to 0.
 - **Ignore drop** leaves the drop out; it is saved as `NA`.
-- **Undo** reverses the last change, including a whole re-detection.
+- **Undo** and **Redo** step back and forward through your changes: added or removed colonies, changed types, the drop flags, Clear marks and re-detections. Each plate keeps its own history of the last 100 steps, even after closing the app. A new change after an undo starts a new branch, so the steps you undid can no longer be redone.
 - Move between drops with **Previous / Next**, by swiping left or right on the drop, or with the plate map, where each well shows its count. On the map, shaded wells were detected but not yet looked at, and wells outlined in green were corrected by hand. **Jump to next unchecked drop** finds the next drop you have not looked at.
-- **Detection sensitivity** and **Colony size** adjust the detection. **Detect again on** reruns it on this drop, its row, its column or the whole plate.
+- **Hold to hide marks** (bottom left of the drop) shows the drop without any circles for as long as you hold it, so you can check that no colony is hidden under a mark. On a keyboard, hold H.
+- **Detect again on this drop** reruns the detection on the drop shown, and on no other. Its **Sensitivity** and **Colony size** sliders start from the plate's Tune settings on every drop, so they only rescue a difficult drop. To change the settings for the whole plate, go back to Tune.
+- **View: Brightness, Contrast and Sharpness** change only what you see on this screen, to check a difficult drop. They do not affect the detection.
 
 With a keyboard:
 
 - ← → or space move between drops, and ↑ ↓ move by a row.
-- The type keys select a colony type.
-- Cmd/Ctrl + Z undoes.
+- The type keys select a colony type, and holding H hides the marks.
+- Cmd/Ctrl + Z undoes, and Cmd/Ctrl + Shift + Z (or Ctrl + Y) redoes.
 
 **How well detection works.** On the lab's scans, about 85% of countable drops came within ±2 colonies of a manual count, with a mean error near one colony. Detection misses colonies in crowded drops where they merge, and occasionally splits a large colony in two. It is a starting point, not a count: look at every drop before exporting.
 
-## 4. Export
+## 5. Export
 
 The Export screen shows a summary of the plate and a table of counts per drop. Shaded cells were detected but not looked at.
 
@@ -108,7 +126,7 @@ Date;Replicate;Plate name;WELL;Volume;Dilution;Prett;NA
 | One column per colony type | The count, `Inf` (too many to count), `0` (empty drop) or `NA` (ignored drop). |
 | NA | Colonies without a type. Always 0, because every mark has a type. The column keeps the file in the lab's established counts format. |
 
-## 5. Load
+## 6. Load
 
 The Load step estimates the bacterial load of each fly from all of that fly's spots, by maximum likelihood. Open it after counting. The layout is only read here, so you stay blind to the treatments while you count.
 
@@ -187,14 +205,11 @@ The statuses mean:
 
 The detection limit is the load a single colony implies, not the load at which detection becomes reliable.
 
-### How the estimate is made
+#### How the estimate is made
 
-Each spot's colony count is modelled as Poisson, with mean equal to the fly's load per µL multiplied by the spot's volume and dilution. The load is the value that maximises the likelihood over all of the fly's spots, with spots above the ceiling handled as described in *Settings*. The standard error comes from the curvature of the log-likelihood at the estimate.
+Each spot's colony count is modelled as Poisson, with mean equal to the fly's load per µL multiplied by the spot's volume and dilution. The load is estimated by maximum likelihood over all of the fly's spots. With the default setting, spots above the ceiling make it a censored Poisson model. With *Leave them out*, it is a right-truncated Poisson model.
 
-This estimator is the lab's `loadEstimate()` function, originally written in R. The app's version was checked against that R code, run in R 4.6:
-
-- On **1,415 simulated samples** under every ceiling setting, plus edge cases, the two agree to about 10⁻¹² and succeed or fail on the same samples.
-- On a **48-fly, 8-plate example**, counts, statuses and detection limits are identical, and the loads agree to 10⁻¹³.
+The **Method** tab gives the full description: the likelihood for each setting, the standard error, the detection limit and the assumptions. It also shows the R code of the estimator, the lab's `loadEstimate()`, which the app runs translated into JavaScript, and an R example that reproduces the per-fly table from a counts file and a layout file. The translation agrees with the R code to about 10⁻¹².
 
 ## Saving and backups
 

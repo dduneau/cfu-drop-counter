@@ -1,5 +1,7 @@
 # CFU Drop Counter
 
+**Version 1.0**. The version is shown next to the app's name, and written into the progress files and the Load settings record.
+
 A web app for counting bacterial colonies (CFU) in drops spotted on a 96-well plate lid filled with agar, and for turning those counts into a bacterial load per fly. It runs in the browser, on an iPad, a phone or a computer. Nothing is uploaded: scans and counts stay on the device that opens the app.
 
 It replaces the Java program CountDrops for counting. Its COUNTS files have the same format, and its Load tab uses the same estimator as the lab's R app, `loadEstimate()`.

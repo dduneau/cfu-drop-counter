@@ -1,6 +1,6 @@
 # CFU Drop Counter
 
-**Version 1.0**. The version is shown next to the app's name, and written into the progress files and the Load settings record.
+**Version 1.1**. The version is shown next to the app's name, and written into the progress files and the Load settings record.
 
 CFU Drop Counter counts bacterial colonies (CFU) in 5 µL drops plated on a 96-well plate lid filled with agar, and estimates the bacterial load of each fly from those counts. It runs in a web browser on an iPad, a phone or a computer, with nothing to install. Scans and counts are never uploaded. They stay on the device that opens the app.
 
@@ -199,6 +199,7 @@ Tables list the plates, the counts per dilution and the drops left out.
 | Drops, Countable, Above_ceiling, Too_many | The number of drops used for the fly, and how they were classified. |
 | Total_CFU | All finite colony counts of that fly added up. |
 | LOD_per_fly | Detection limit: one colony over all the volume plated for that fly, scaled to the homogenate. |
+| LOD95_per_fly | 95% level of detection: the load at which a fly gives at least one colony with 95% probability, −ln(0.05) ≈ 3.0 times LOD_per_fly. |
 | load, logload, se.logload | Load per µL of homogenate, its log, and the standard error of the log. |
 | sumCFU, code | Colonies used by the estimator. code 1 = estimated, −1 = no estimate. |
 | CFU_per_fly, log10_CFU_per_fly (or log2), se_log | Load per fly, its log, and the standard error of the log. |
@@ -211,7 +212,7 @@ The statuses mean:
 - **Above the dilutions used**: no drop was countable, so the load is higher than this series can measure.
 - **Estimation failed**: colonies were counted, but the estimator found no estimate.
 
-The detection limit is the load a single colony implies, not the load at which detection becomes reliable.
+`LOD_per_fly` is the load a single colony implies, not the load at which detection becomes reliable: a fly carrying it gives no colony in 37% of samples. `LOD95_per_fly` is the level of detection to report, and the value to give flies that were not detected. With the threefold series of the protocol, they are about 33 and 100 bacteria per fly.
 
 #### How the estimate is made
 

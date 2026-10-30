@@ -1,6 +1,6 @@
 # CFU Drop Counter
 
-**Version 1.1**. The version is shown next to the app's name, and written into the progress files and the Load settings record.
+**Version 1.0**. The version is shown next to the app's name, and written into the progress files and the Load settings record.
 
 CFU Drop Counter counts bacterial colonies (CFU) in 5 µL drops plated on a 96-well plate lid filled with agar, and estimates the bacterial load of each fly from those counts. It runs in a web browser on an iPad, a phone or a computer, with nothing to install. Scans and counts are never uploaded. They stay on the device that opens the app.
 
@@ -23,7 +23,9 @@ The **Method** tab explains the statistics behind the Load step and gives its R 
 2. Tap **Share → Add to Home Screen**, and from then on open the app from that icon. Safari can clear a website's stored data after 7 days without a visit, but apps opened from the Home Screen are exempt.
 3. Put the scans where the iPad can reach them: Files, iCloud Drive or AirDrop. Use the original image files, because Photos and messaging apps can resize images.
 
-**Use example scan** on the Setup screen loads an example plate to try the app.
+**Scans.** Scan by transmitted light (the scanner's transparency unit, light passing through the lid), which gives dark colonies on light agar. Colonies are sharper and better separated than by reflected light, and detection is more accurate. Scans by reflected light (pale colonies on dark agar) still work. About 600 dpi is enough. Save scans as PNG or high-quality JPEG in 8 bits; a 16-bit TIFF of a whole lid can be over 60 MB, opens in Safari only, and adds nothing for counting.
+
+**Use example scan** on the Setup screen loads an example plate to try the app: a lid scanned by transmitted light, reduced, with the grid already placed.
 
 ## 1. Setup
 
@@ -65,6 +67,8 @@ A plate scanned sideways works too: put each marker on the well with that name. 
 
 Tune shows eight drops picked across the plate, from empty to crowded, with the colonies the detection finds in each. Every change of a setting updates them at once, so you can judge a setting on several kinds of drop together. **Show other drops** picks another eight. Tap a drop to open it in Count.
 
+- **Colonies on this scan**: *pale on dark agar* or *dark on light agar*. The app chooses it from the scan when it is loaded; change it if it guessed wrong. On scans with dark colonies, each drop is compared with its own background; blurred smudges, large dark masses (condensation, a mould) and thin arcs (bubble edges, the well rim) are left out.
+
 - **Image used by the detection**: the brightness, contrast and sharpness of the image the detection works on. They help most on dim or low-contrast images; on a sharp, well-lit scan they make little difference.
 - **Counting area**: the circle in which colonies are detected. Keep it just inside the well rim.
 - **Sensitivity**: higher finds fainter colonies; lower ignores faint marks.
@@ -97,7 +101,7 @@ With a keyboard:
 - The type keys select a colony type, and holding H hides the marks.
 - Cmd/Ctrl + Z undoes, and Cmd/Ctrl + Shift + Z (or Ctrl + Y) redoes.
 
-**How well detection works.** On a test scan of two plates (157 countable drops, compared with manual counts), about 85% of drops came within ±2 colonies, with a mean error of about one colony. Detection misses colonies in crowded drops where they merge, and occasionally splits a large colony in two. It is a starting point, not a count: look at every drop before exporting. Because every drop is checked, the quality of the detection changes how long counting takes, not the final counts.
+**How well detection works.** On scans with pale colonies on dark agar, tested on two plates (157 countable drops, compared with manual counts), about 85% of drops came within ±2 colonies, with a mean error of about one colony. On scans with dark colonies on light agar, tested on one plate against hand counts, 77 of the 80 drops with 30 colonies or fewer came within ±2 colonies, with a mean error of about half a colony. The drops that needed correcting had bubbles at the rim, a mould, or colonies spilling past the well rim, which fall outside the counting area. Detection misses colonies in crowded drops where they merge, and occasionally splits a large colony in two. It is a starting point, not a count: look at every drop before exporting. Because every drop is checked, the quality of the detection changes how long counting takes, not the final counts.
 
 ## 5. Export
 
@@ -199,7 +203,6 @@ Tables list the plates, the counts per dilution and the drops left out.
 | Drops, Countable, Above_ceiling, Too_many | The number of drops used for the fly, and how they were classified. |
 | Total_CFU | All finite colony counts of that fly added up. |
 | LOD_per_fly | Detection limit: one colony over all the volume plated for that fly, scaled to the homogenate. |
-| LOD95_per_fly | 95% level of detection: the load at which a fly gives at least one colony with 95% probability, −ln(0.05) ≈ 3.0 times LOD_per_fly. |
 | load, logload, se.logload | Load per µL of homogenate, its log, and the standard error of the log. |
 | sumCFU, code | Colonies used by the estimator. code 1 = estimated, −1 = no estimate. |
 | CFU_per_fly, log10_CFU_per_fly (or log2), se_log | Load per fly, its log, and the standard error of the log. |
@@ -212,7 +215,7 @@ The statuses mean:
 - **Above the dilutions used**: no drop was countable, so the load is higher than this series can measure.
 - **Estimation failed**: colonies were counted, but the estimator found no estimate.
 
-`LOD_per_fly` is the load a single colony implies, not the load at which detection becomes reliable: a fly carrying it gives no colony in 37% of samples. `LOD95_per_fly` is the level of detection to report, and the value to give flies that were not detected. With the threefold series of the protocol, they are about 33 and 100 bacteria per fly.
+The detection limit is the load a single colony implies, not the load at which detection becomes reliable.
 
 #### How the estimate is made
 

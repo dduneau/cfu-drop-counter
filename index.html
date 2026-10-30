@@ -873,7 +873,7 @@ est
 <p>Tune shows eight drops picked across the plate, from empty to crowded, with the colonies the detection finds in each. Every change of a setting updates them at once, so you can judge a setting on several kinds of drop together. <strong>Show other drops</strong> picks another eight. Tap a drop to open it in Count.</p>
 <ul>
 <li>
-<p><strong>Colonies on this scan</strong>: <em>pale on dark agar</em> or <em>dark on light agar</em>. The app chooses it from the scan when it is loaded; change it if it guessed wrong. On scans with dark colonies, each drop is compared with its own background, and blurred smudges and large dark masses (condensation, a mould) are left out.</p>
+<p><strong>Colonies on this scan</strong>: <em>pale on dark agar</em> or <em>dark on light agar</em>. The app chooses it from the scan when it is loaded; change it if it guessed wrong. On scans with dark colonies, each drop is compared with its own background; blurred smudges, large dark masses (condensation, a mould) and thin arcs (bubble edges, the well rim) are left out.</p>
 </li>
 <li>
 <p><strong>Image used by the detection</strong>: the brightness, contrast and sharpness of the image the detection works on. They help most on dim or low-contrast images; on a sharp, well-lit scan they make little difference.</p>
@@ -905,7 +905,7 @@ est
 <li>The type keys select a colony type, and holding H hides the marks.</li>
 <li>Cmd/Ctrl + Z undoes, and Cmd/Ctrl + Shift + Z (or Ctrl + Y) redoes.</li>
 </ul>
-<p><strong>How well detection works.</strong> On scans with pale colonies on dark agar, tested on two plates (157 countable drops, compared with manual counts), about 85% of drops came within ±2 colonies, with a mean error of about one colony. Scans with dark colonies on light agar have not yet been compared with manual counts; on the first such scan, separate colonies were found reliably, while bubbles, fibres and colonies spilling past the well rim needed correcting by hand. Detection misses colonies in crowded drops where they merge, and occasionally splits a large colony in two. It is a starting point, not a count: look at every drop before exporting. Because every drop is checked, the quality of the detection changes how long counting takes, not the final counts.</p>
+<p><strong>How well detection works.</strong> On scans with pale colonies on dark agar, tested on two plates (157 countable drops, compared with manual counts), about 85% of drops came within ±2 colonies, with a mean error of about one colony. On scans with dark colonies on light agar, tested on one plate against hand counts, 77 of the 80 drops with 30 colonies or fewer came within ±2 colonies, with a mean error of about half a colony. The drops that needed correcting had bubbles at the rim, a mould, or colonies spilling past the well rim, which fall outside the counting area. Detection misses colonies in crowded drops where they merge, and occasionally splits a large colony in two. It is a starting point, not a count: look at every drop before exporting. Because every drop is checked, the quality of the detection changes how long counting takes, not the final counts.</p>
 <h2>5. Export</h2>
 <p>The Export screen shows a summary of the plate and a table of counts per drop. Shaded cells were detected but not looked at.</p>
 <p><strong>Save CSV</strong> writes the counts file, named after the scan: <code>COUNTS_&lt;scan name&gt;.csv</code>.</p>
@@ -1463,6 +1463,20 @@ const CFUDetect = (() => {
       out.push(...kmeans(lab, w, h, c.id, n, peaks.map((q) => [q.x, q.y])));
     }
     pts.length = 0; pts.push(...out);
+    if (opts.dark) {
+      // A colony is a disc: a small circle around its centre stays inside it. Points on thin
+      // arcs (bubble edges, the well rim) have background on part of that circle.
+      const rr = r0 * 0.55, NS = 24, keep = [];
+      for (const q of pts) {
+        let inside = 0;
+        for (let a = 0; a < NS; a++) {
+          const x = Math.round(q.x + rr * Math.cos((a / NS) * 2 * Math.PI)), y = Math.round(q.y + rr * Math.sin((a / NS) * 2 * Math.PI));
+          if (x >= 0 && y >= 0 && x < w && y < h && p.g[y * w + x] >= thr) inside++;
+        }
+        if (inside / NS >= (opts.discK || 0.7)) keep.push(q);
+      }
+      pts.length = 0; pts.push(...keep);
+    }
     let fg = 0, m = 0;
     for (let i = 0; i < b.length; i++) { if (p.mask[i]) { m++; if (b[i]) fg++; } }
     return { points: pts.map((q) => ({ x: q.x, y: q.y })), coverage: m ? fg / m : 0 };
@@ -2322,7 +2336,7 @@ function ensureGrid() {
   const iw = img.naturalWidth, ih = img.naturalHeight;
   const gw = iw * 0.8, p = gw / Math.max(1, S.cols - 1), gh = p * Math.max(0, S.rows - 1);
   const x0 = iw * 0.1, y0 = Math.max(p * 0.6, Math.min(ih - gh - p * 0.6, iw * 0.1));
-  S.grid = { c: [[x0, y0], [x0 + gw, y0], [x0, y0 + gh], [x0 + gw, y0 + gh]], maskK: S.maskK0 || 0.46 }; // counting area carried from the previous plate
+  S.grid = { c: [[x0, y0], [x0 + gw, y0], [x0, y0 + gh], [x0 + gw, y0 + gh]], maskK: S.maskK0 || (isLight() ? 0.45 : 0.46) }; // counting area carried from the previous plate
 }
 function sizeCanvas(stage, cv) {
   const r = stage.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
